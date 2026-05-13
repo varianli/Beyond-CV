@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Beyond CV</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <main class="popup">
+    <header class="header">
+      <div>
+        <p class="eyebrow">Beyond CV</p>
+        <h1>招聘表单填入助手</h1>
+      </div>
+      <span id="statusDot" class="dot"></span>
+    </header>
+
+    <section class="panel">
+      <div class="row">
+        <div>
+          <p class="label">当前页面</p>
+          <p id="pageTitle" class="page-title">等待扫描</p>
+        </div>
+        <button id="scanButton" type="button">扫描</button>
+      </div>
+      <p id="scanStatus" class="muted">打开招聘网站后点击扫描，插件会识别可填字段。</p>
+    </section>
+
+    <section class="panel profile">
+      <div class="row">
+        <div>
+          <p class="label">本地资料</p>
+          <p id="profileName" class="page-title">未读取</p>
+        </div>
+        <button id="editProfileButton" class="secondary" type="button">编辑</button>
+      </div>
+      <button id="importProfileButton" class="secondary full" type="button">从 Beyond CV 页面导入资料</button>
+      <div class="cloud-sync">
+        <div class="sync-grid">
+          <input id="accountEmailInput" class="sync-input" type="email" autocomplete="email" placeholder="账户邮箱" />
+          <input id="accountPasswordInput" class="sync-input" type="password" autocomplete="current-password" placeholder="密码" />
+        </div>
+        <div class="sync-grid">
+          <button id="loginAccountButton" class="secondary" type="button">登录账户</button>
+          <button id="logoutAccountButton" class="secondary" type="button">退出</button>
+        </div>
+        <p id="accountStatus" class="sync-status">未登录，可使用同步码</p>
+        <input id="syncTokenInput" class="sync-input" placeholder="粘贴 Supabase 同步码" />
+        <button id="cloudSyncButton" class="secondary full" type="button">从云端同步资料</button>
+      </div>
+      <button id="directFillButton" class="full" type="button">按页面字段直填</button>
+    </section>
+
+    <section class="panel">
+      <div class="row">
+        <p class="label">匹配结果</p>
+        <span id="matchCount" class="pill">0</span>
+      </div>
+      <div id="fieldList" class="field-list"></div>
+    </section>
+
+    <footer class="footer">
+      <button id="fillButton" type="button">填入已选字段</button>
+      <button id="clearButton" class="secondary" type="button">清除标记</button>
+    </footer>
+  </main>
+  <script src="popup.js"></script>
+</body>
+</html>
