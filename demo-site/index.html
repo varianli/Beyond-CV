@@ -796,6 +796,28 @@
                 </button>
               </div>
 
+              <div class="mb-4 rounded-[10px] border border-slate-200 bg-white/80 p-3">
+                <div class="mb-3 flex items-start justify-between gap-3">
+                  <div>
+                    <h4 class="text-sm font-semibold text-slate-900">AI 模型设置</h4>
+                    <p class="mt-1 text-xs leading-5 text-slate-500">API Key 只保存在当前浏览器本地，不写入页面文件或 Git。</p>
+                  </div>
+                  <i data-lucide="key-round" class="mt-0.5 h-5 w-5 text-blue-600"></i>
+                </div>
+                <div class="grid gap-2 md:grid-cols-[1.15fr_0.85fr]">
+                  <input id="aiApiKeyInput" class="field-input" type="password" autocomplete="off" placeholder="DeepSeek API Key" />
+                  <input id="aiModelInput" class="field-input" placeholder="deepseek-v4-flash" />
+                </div>
+                <div class="mt-2 grid gap-2 md:grid-cols-[1fr_auto]">
+                  <input id="aiBaseUrlInput" class="field-input" placeholder="https://api.deepseek.com" />
+                  <button id="saveAiSettingsButton" class="secondary-button justify-center" type="button">
+                    <i data-lucide="save" class="h-4 w-4"></i>
+                    保存 AI 设置
+                  </button>
+                </div>
+                <div id="aiSettingsStatus" class="mt-2 text-xs font-semibold text-slate-500">未保存 Key 时不会调用 AI。</div>
+              </div>
+
               <div class="mb-4 rounded-[10px] border border-blue-100 bg-blue-50/50 p-3">
                 <label class="mb-2 block text-xs font-semibold text-blue-800">完整经历文本识别</label>
                 <textarea id="smartPasteText" class="field-textarea min-h-[170px]" placeholder="粘贴完整简历、经历库或项目记录。即使格式不完全统一，系统也会先识别个人信息、教育、实习、项目、校园活动和技能，再填入下方字段；原文会保留在这里，方便逐项核对。"></textarea>
@@ -1059,28 +1081,28 @@
                     <i data-lucide="message-square-text" class="h-4 w-4 text-blue-600"></i>
                     字段短答
                   </div>
-                  <p id="materialShortAnswer" class="text-xs leading-5 text-slate-500">可入职时间、经历摘要、为什么申请该岗位。</p>
+                  <p id="materialShortAnswer" class="whitespace-pre-line text-xs leading-5 text-slate-500">可入职时间、经历摘要、为什么申请该岗位。</p>
                 </button>
                 <button class="material-card rounded-[10px] border border-slate-200 bg-white/75 p-3 text-left transition hover:border-violet-200 hover:bg-violet-50/40" data-material="coverLetter" type="button">
                   <div class="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-900">
                     <i data-lucide="mail" class="h-4 w-4 text-violet-600"></i>
                     Cover Letter
                   </div>
-                  <p id="materialCoverLetter" class="text-xs leading-5 text-slate-500">300 字中文版本，引用已勾选经历和关键成果。</p>
+                  <p id="materialCoverLetter" class="whitespace-pre-line text-xs leading-5 text-slate-500">300 字中文版本，引用已勾选经历和关键成果。</p>
                 </button>
                 <button class="material-card rounded-[10px] border border-slate-200 bg-white/75 p-3 text-left transition hover:border-emerald-200 hover:bg-emerald-50/40" data-material="bq" type="button">
                   <div class="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-900">
                     <i data-lucide="list-checks" class="h-4 w-4 text-emerald-600"></i>
                     Behavior Question
                   </div>
-                  <p id="materialBQ" class="text-xs leading-5 text-slate-500">团队合作、冲突解决、Why role。</p>
+                  <p id="materialBQ" class="whitespace-pre-line text-xs leading-5 text-slate-500">团队合作、冲突解决、Why role。</p>
                 </button>
                 <button class="material-card rounded-[10px] border border-slate-200 bg-white/75 p-3 text-left transition hover:border-orange-200 hover:bg-orange-50/40" data-material="resumeAdvice" type="button">
                   <div class="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-900">
                     <i data-lucide="file-symlink" class="h-4 w-4 text-orange-600"></i>
                     适配简历建议
                   </div>
-                  <p id="materialResumeAdvice" class="text-xs leading-5 text-slate-500">推荐保留与目标岗位最相关的经历，弱化无关内容。</p>
+                  <p id="materialResumeAdvice" class="whitespace-pre-line text-xs leading-5 text-slate-500">推荐保留与目标岗位最相关的经历，弱化无关内容。</p>
                 </button>
               </div>
             </div>
@@ -1287,7 +1309,8 @@
     const state = {
       lang: "zh",
       density: "standard",
-      pluginConnected: false
+      pluginConnected: false,
+      currentJD: null
     };
 
     const BCV_SUPABASE_URL = "https://fsdashpviavdlxyicibr.supabase.co";
@@ -1296,6 +1319,19 @@
     const BCV_AUTH_ENDPOINT = `${BCV_SUPABASE_URL}/auth/v1`;
     const BCV_SYNC_TOKEN_KEY = "beyondCvSyncToken";
     const BCV_AUTH_SESSION_KEY = "beyondCvAuthSession";
+    const BCV_AI_CONFIG_KEY = "beyondCvAiConfig";
+    const BCV_AI_DEFAULT_CONFIG = {
+      baseUrl: "https://api.deepseek.com",
+      model: "deepseek-v4-flash",
+      apiKey: ""
+    };
+    const BCV_AI_SYSTEM_PROMPT = [
+      "你是一个招聘大师，最懂候选人与招聘方之间的业务对接需求。",
+      "你必须只基于用户提供的简历、JD、经历和页面上下文生成内容。",
+      "不能撒谎，不能捏造事实，不能编造公司、项目、学历、证书、技能、数据或成果。",
+      "如果材料缺少关键信息，要保守表达，或明确提示需要候选人补充。",
+      "输出要具体、专业、可直接用于求职材料，默认使用中文。"
+    ].join("\n");
     const bcvMemoryStore = {};
 
     const $ = (id) => document.getElementById(id);
@@ -1338,6 +1374,152 @@
       } catch (_error) {
         return false;
       }
+    }
+
+    function normalizeAiBaseUrl(value) {
+      return String(value || BCV_AI_DEFAULT_CONFIG.baseUrl).trim().replace(/\/+$/, "");
+    }
+
+    function readAiConfig() {
+      const stored = safeStorageGet(BCV_AI_CONFIG_KEY);
+      if (!stored) return { ...BCV_AI_DEFAULT_CONFIG };
+      try {
+        const parsed = JSON.parse(stored);
+        return {
+          ...BCV_AI_DEFAULT_CONFIG,
+          ...parsed,
+          baseUrl: normalizeAiBaseUrl(parsed.baseUrl),
+          apiKey: String(parsed.apiKey || "").trim(),
+          model: String(parsed.model || BCV_AI_DEFAULT_CONFIG.model).trim()
+        };
+      } catch (_error) {
+        return { ...BCV_AI_DEFAULT_CONFIG };
+      }
+    }
+
+    function writeAiConfig(config) {
+      const next = {
+        baseUrl: normalizeAiBaseUrl(config.baseUrl),
+        model: String(config.model || BCV_AI_DEFAULT_CONFIG.model).trim(),
+        apiKey: String(config.apiKey || "").trim()
+      };
+      safeStorageSet(BCV_AI_CONFIG_KEY, JSON.stringify(next));
+      return next;
+    }
+
+    function showAiSettingsStatus(message, tone = "slate") {
+      const status = $("aiSettingsStatus");
+      if (!status) return;
+      const tones = {
+        slate: "mt-2 text-xs font-semibold text-slate-500",
+        green: "mt-2 text-xs font-semibold text-emerald-700",
+        orange: "mt-2 text-xs font-semibold text-orange-700",
+        red: "mt-2 text-xs font-semibold text-red-700",
+        blue: "mt-2 text-xs font-semibold text-blue-700"
+      };
+      status.className = tones[tone] || tones.slate;
+      status.textContent = message;
+    }
+
+    function loadAiSettingsForm() {
+      const config = readAiConfig();
+      const apiKeyInput = $("aiApiKeyInput");
+      const modelInput = $("aiModelInput");
+      const baseUrlInput = $("aiBaseUrlInput");
+      if (apiKeyInput) apiKeyInput.value = config.apiKey;
+      if (modelInput) modelInput.value = config.model;
+      if (baseUrlInput) baseUrlInput.value = config.baseUrl;
+      showAiSettingsStatus(config.apiKey ? `AI 已配置：${config.model}` : "未保存 Key 时不会调用 AI。", config.apiKey ? "green" : "slate");
+    }
+
+    function saveAiSettingsFromForm() {
+      const config = writeAiConfig({
+        apiKey: $("aiApiKeyInput")?.value,
+        model: $("aiModelInput")?.value,
+        baseUrl: $("aiBaseUrlInput")?.value
+      });
+      showAiSettingsStatus(config.apiKey ? `AI 设置已保存：${config.model}` : "已保存模型设置，但仍缺少 API Key。", config.apiKey ? "green" : "orange");
+      return config;
+    }
+
+    function bindAiSettings() {
+      loadAiSettingsForm();
+      $("saveAiSettingsButton")?.addEventListener("click", () => {
+        saveAiSettingsFromForm();
+        lucide.createIcons();
+      });
+    }
+
+    function requireAiConfig() {
+      const fromForm = {
+        apiKey: $("aiApiKeyInput")?.value,
+        model: $("aiModelInput")?.value,
+        baseUrl: $("aiBaseUrlInput")?.value
+      };
+      const config = writeAiConfig({ ...readAiConfig(), ...fromForm });
+      if (!config.apiKey) {
+        showAiSettingsStatus("请先保存 DeepSeek API Key。", "orange");
+        throw new Error("缺少 DeepSeek API Key");
+      }
+      return config;
+    }
+
+    function trimForAi(value, maxLength = 7000) {
+      const text = String(value || "").replace(/\s+\n/g, "\n").trim();
+      if (text.length <= maxLength) return text;
+      return `${text.slice(0, maxLength)}\n\n[内容过长，已截断；请只基于可见内容生成。]`;
+    }
+
+    function parseAiJson(text) {
+      const cleaned = String(text || "").replace(/```json|```/gi, "").trim();
+      try {
+        return JSON.parse(cleaned);
+      } catch (_error) {
+        const start = cleaned.indexOf("{");
+        const end = cleaned.lastIndexOf("}");
+        if (start >= 0 && end > start) return JSON.parse(cleaned.slice(start, end + 1));
+        throw new Error("AI 返回内容不是可解析 JSON");
+      }
+    }
+
+    async function callDeepSeek(task, userContent, options = {}) {
+      const config = requireAiConfig();
+      showAiSettingsStatus(`AI 正在处理：${task}`, "blue");
+      const body = {
+        model: config.model,
+        messages: [
+          { role: "system", content: BCV_AI_SYSTEM_PROMPT },
+          { role: "user", content: userContent }
+        ],
+        thinking: { type: "disabled" },
+        temperature: options.temperature ?? 0.35,
+        max_tokens: options.maxTokens ?? 1800
+      };
+      if (options.json) body.response_format = { type: "json_object" };
+
+      let response;
+      try {
+        response = await fetch(`${config.baseUrl}/chat/completions`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${config.apiKey}`
+          },
+          body: JSON.stringify(body)
+        });
+      } catch (error) {
+        throw new Error(`AI 请求失败：${error.message}`);
+      }
+
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        const message = result.error?.message || result.message || `HTTP ${response.status}`;
+        throw new Error(`DeepSeek 请求失败：${message}`);
+      }
+      const content = result.choices?.[0]?.message?.content?.trim();
+      if (!content) throw new Error("AI 没有返回内容");
+      showAiSettingsStatus(`AI 已完成：${task}`, "green");
+      return options.json ? parseAiJson(content) : content;
     }
 
     function renderPreview() {
@@ -1984,48 +2166,131 @@
       update();
     }
 
+    function aiText(value) {
+      if (Array.isArray(value)) return value.map((item) => String(item || "").trim()).filter(Boolean).join("\n");
+      return String(value || "").trim();
+    }
+
+    function normalizeAiItem(item = {}) {
+      return {
+        org: aiText(item.org || item.organization || item.company || item.school).slice(0, 120),
+        city: aiText(item.city || item.location).slice(0, 80),
+        role: aiText(item.role || item.title || item.degree).slice(0, 160),
+        date: aiText(item.date || item.time || item.period).slice(0, 80),
+        detail: aiText(item.detail || item.description || item.bullets).slice(0, 1400)
+      };
+    }
+
+    function normalizeAiResumeResult(result = {}) {
+      const profile = result.profile || {};
+      const skills = result.skills || {};
+      return {
+        profile: {
+          name: aiText(profile.name),
+          phone: aiText(profile.phone),
+          email: aiText(profile.email),
+          address: aiText(profile.address || profile.city)
+        },
+        education: (Array.isArray(result.education) ? result.education : []).map(normalizeAiItem).filter((item) => item.org || item.role || item.date || item.detail),
+        experience: (Array.isArray(result.experience) ? result.experience : []).map(normalizeAiItem).filter((item) => item.org || item.role || item.date || item.detail),
+        campus: (Array.isArray(result.campus) ? result.campus : []).map(normalizeAiItem).filter((item) => item.org || item.role || item.date || item.detail),
+        skills: {
+          technical: aiText(skills.technical || result.skillsTechnical),
+          certs: aiText(skills.certs || skills.certificates || result.skillsCerts)
+        }
+      };
+    }
+
+    async function parseSmartPasteWithAI(text) {
+      const prompt = `
+请把候选人粘贴的完整简历/经历文本拆成 Beyond CV 表单可用的结构化 JSON。
+
+硬性规则：
+- 只能抽取原文明确出现的事实，不要补写、不要猜测、不要美化出原文没有的成果。
+- 缺少字段用空字符串；缺少模块用空数组。
+- detail 可以把原文经历整理成简洁 bullet，但不能新增公司、数字、职责或结果。
+- 工作、实习、项目经历放入 experience；学生组织、社团、校园活动放入 campus；学校学历放入 education。
+- 只返回 JSON，不要 Markdown。
+
+JSON 结构：
+{
+  "profile": {"name": "", "phone": "", "email": "", "address": ""},
+  "education": [{"org": "", "city": "", "role": "", "date": "", "detail": ""}],
+  "experience": [{"org": "", "city": "", "role": "", "date": "", "detail": ""}],
+  "campus": [{"org": "", "city": "", "role": "", "date": "", "detail": ""}],
+  "skills": {"technical": "", "certs": ""}
+}
+
+候选人原文：
+${trimForAi(text, 9000)}
+`;
+      return normalizeAiResumeResult(await callDeepSeek("快速粘贴识别", prompt, {
+        json: true,
+        temperature: 0.1,
+        maxTokens: 2600
+      }));
+    }
+
+    function applyParsedResume(parsed, originalText) {
+      $("candidateName").value = parsed.profile.name;
+      $("candidatePhone").value = parsed.profile.phone;
+      $("candidateEmail").value = parsed.profile.email;
+      $("candidateAddress").value = parsed.profile.address;
+      replaceItems("education", parsed.education);
+      replaceItems("experience", parsed.experience);
+      replaceItems("campus", parsed.campus);
+      setSkillFieldValue("skillsTechnical", parsed.skills.technical);
+      setSkillFieldValue("skillsCerts", parsed.skills.certs);
+      if (originalText) $("smartPasteText").value = originalText;
+      flashParsedFields();
+      renderPreview();
+    }
+
+    function setInlineStatus(id, message, tone = "green") {
+      const status = $(id);
+      if (!status) return;
+      const tones = {
+        green: "mt-3 rounded-[8px] border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700",
+        orange: "mt-3 rounded-[8px] border border-orange-200 bg-orange-50 px-3 py-2 text-xs font-semibold text-orange-800",
+        red: "mt-3 rounded-[8px] border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700",
+        blue: "mt-3 rounded-[8px] border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700"
+      };
+      status.className = tones[tone] || tones.green;
+      status.textContent = message;
+    }
+
     function bindSmartPaste() {
-      $("smartPasteButton").addEventListener("click", () => {
+      $("smartPasteButton").addEventListener("click", async () => {
         const button = $("smartPasteButton");
         button.innerHTML = '<i data-lucide="loader-circle" class="h-4 w-4 animate-spin"></i> AI 正在理解...';
         button.disabled = true;
         const originalText = $("smartPasteText").value;
         const sample = originalText.trim();
         if (!sample) {
-          const status = $("smartPasteStatus");
-          status.className = "mt-3 rounded-[8px] border border-orange-200 bg-orange-50 px-3 py-2 text-xs font-semibold text-orange-800";
-          status.textContent = "请先粘贴完整经历文本。空内容不会触发 AI 理解，也不会自动填入示例数据。";
+          setInlineStatus("smartPasteStatus", "请先粘贴完整经历文本。空内容不会触发 AI 理解，也不会自动填入示例数据。", "orange");
           button.innerHTML = '<i data-lucide="scan-text" class="h-4 w-4"></i> 识别并填入字段';
           button.disabled = false;
           lucide.createIcons();
           return;
         }
-        window.setTimeout(() => {
-          const parsed = parseSmartPaste(sample);
-          $("candidateName").value = parsed.profile.name;
-          $("candidatePhone").value = parsed.profile.phone;
-          $("candidateEmail").value = parsed.profile.email;
-          $("candidateAddress").value = parsed.profile.address;
-          replaceItems("education", parsed.education);
-          replaceItems("experience", parsed.experience);
-          replaceItems("campus", parsed.campus);
-          setSkillFieldValue("skillsTechnical", parsed.skills.technical);
-          setSkillFieldValue("skillsCerts", parsed.skills.certs);
-          if (originalText) $("smartPasteText").value = originalText;
-          flashParsedFields();
-          renderPreview();
-          const status = $("smartPasteStatus");
-          status.className = "mt-3 rounded-[8px] border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700";
-          status.textContent = `AI 已理解并填入：基础信息 4 项、教育 ${parsed.education.length} 段、实习 ${parsed.experience.length} 段、在校活动 ${parsed.campus.length} 段、技能 2 项；缺少的经历卡片已自动新增。`;
+        setInlineStatus("smartPasteStatus", "AI 正在读取原文并拆分结构。", "blue");
+        try {
+          const parsed = await parseSmartPasteWithAI(sample);
+          applyParsedResume(parsed, originalText);
+          setInlineStatus("smartPasteStatus", `AI 已理解并填入：基础信息、教育 ${parsed.education.length} 段、实习/项目 ${parsed.experience.length} 段、在校活动 ${parsed.campus.length} 段。`, "green");
           $("educationList").scrollIntoView({ behavior: "smooth", block: "start" });
           button.innerHTML = '<i data-lucide="check" class="h-4 w-4"></i> 已填入，可继续修改';
-          button.disabled = false;
-          lucide.createIcons();
           window.setTimeout(() => {
             button.innerHTML = '<i data-lucide="scan-text" class="h-4 w-4"></i> 识别并填入字段';
             lucide.createIcons();
           }, 1800);
-        }, 260);
+        } catch (error) {
+          setInlineStatus("smartPasteStatus", error.message, "red");
+          button.innerHTML = '<i data-lucide="scan-text" class="h-4 w-4"></i> 识别并填入字段';
+        } finally {
+          button.disabled = false;
+          lucide.createIcons();
+        }
         lucide.createIcons();
       });
     }
@@ -2063,33 +2328,175 @@
       });
     }
 
+    function normalizeAiJDResult(result = {}, sourceText = "") {
+      const fallback = parseJD(sourceText);
+      const keywords = Array.isArray(result.keywords) ? result.keywords.map(aiText).filter(Boolean) : [];
+      const mustHave = Array.isArray(result.mustHave) ? result.mustHave.map(aiText).filter(Boolean) : [];
+      const niceToHave = Array.isArray(result.niceToHave) ? result.niceToHave.map(aiText).filter(Boolean) : [];
+      const safeKeywords = keywords.length ? keywords.slice(0, 8) : fallback.keywords;
+      return {
+        role: aiText(result.role) || fallback.role,
+        keywords: safeKeywords,
+        focus: aiText(result.focus) || safeKeywords.slice(0, 3).join("、"),
+        mustHave,
+        niceToHave,
+        raw: sourceText
+      };
+    }
+
+    async function parseJDWithAI(jdText) {
+      const prompt = `
+请理解这份 JD，并返回 Beyond CV 后续材料生成需要的结构化 JSON。
+
+硬性规则：
+- 只能从 JD 原文抽取岗位、关键词、硬性要求和加分项。
+- 不要加入 JD 未出现的公司信息、业务背景或任职要求。
+- 关键词控制在 4-8 个，使用中文短语。
+- 只返回 JSON，不要 Markdown。
+
+JSON 结构：
+{
+  "role": "",
+  "keywords": [],
+  "focus": "",
+  "mustHave": [],
+  "niceToHave": []
+}
+
+JD 原文：
+${trimForAi(jdText, 9000)}
+`;
+      return normalizeAiJDResult(await callDeepSeek("JD 分析", prompt, {
+        json: true,
+        temperature: 0.12,
+        maxTokens: 1400
+      }), jdText);
+    }
+
+    function renderJDContext(parsed) {
+      state.currentJD = parsed;
+      $("jobRole").textContent = parsed.role;
+      $("jobKeywords").innerHTML = parsed.keywords
+        .map((keyword) => `<span class="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">${escapeHtml(keyword)}</span>`)
+        .join("");
+    }
+
+    function materialTargetId(type) {
+      return {
+        shortAnswer: "materialShortAnswer",
+        coverLetter: "materialCoverLetter",
+        bq: "materialBQ",
+        resumeAdvice: "materialResumeAdvice"
+      }[type];
+    }
+
+    function materialTitle(type) {
+      return {
+        shortAnswer: "字段短答",
+        coverLetter: "Cover Letter",
+        bq: "Behavior Question",
+        resumeAdvice: "适配简历建议"
+      }[type] || "材料";
+    }
+
+    function renderMaterial(type, content) {
+      const targetId = materialTargetId(type);
+      if (!targetId) return;
+      $(targetId).textContent = content;
+      const card = document.querySelector(`.material-card[data-material="${type}"]`);
+      card?.classList.add("border-blue-300", "bg-blue-50/50");
+      window.setTimeout(() => card?.classList.remove("border-blue-300", "bg-blue-50/50"), 900);
+    }
+
+    function resumeFactsForAi() {
+      const resume = collectResumePayload();
+      return {
+        profile: resume.profile,
+        education: resume.education,
+        experience: resume.experience,
+        campus: resume.campus,
+        skills: resume.skills
+      };
+    }
+
+    function materialsPrompt(parsed = getCurrentJDContext(), onlyType = "") {
+      const typeInstruction = onlyType
+        ? `只生成 ${materialTitle(onlyType)}，其他字段可以留空字符串。`
+        : "同时生成四类材料。";
+      return `
+请根据候选人真实简历事实和 JD，生成求职材料。
+
+硬性规则：
+- 只能引用“候选人事实”和“JD”中已有的信息。
+- 不能编造公司、岗位、项目、数据、奖项、学历、证书、技能或结果。
+- 如果候选人事实不足，要写成保守表达，或提示“需补充具体例子/数据”。
+- ${typeInstruction}
+- 输出 JSON，不要 Markdown。
+
+JSON 结构：
+{
+  "shortAnswer": "常见申请表短答，包含可入职时间、经历摘要、为什么申请该岗位等，分行输出",
+  "coverLetter": "约 250-350 字中文 cover letter",
+  "bq": "3 个 Behavior Question 回答，覆盖团队合作、冲突解决/压力处理、Why role，使用 STAR 结构",
+  "resumeAdvice": "3-5 条针对 JD 的简历取舍和 bullet 优化建议"
+}
+
+JD：
+${JSON.stringify(parsed, null, 2)}
+
+候选人事实：
+${JSON.stringify(resumeFactsForAi(), null, 2)}
+`;
+    }
+
+    async function generateMaterialsWithAI(parsed, onlyType = "") {
+      const result = await callDeepSeek(onlyType ? `${materialTitle(onlyType)}生成` : "材料生成", materialsPrompt(parsed, onlyType), {
+        json: true,
+        temperature: 0.45,
+        maxTokens: onlyType ? 1600 : 2800
+      });
+      return {
+        shortAnswer: aiText(result.shortAnswer),
+        coverLetter: aiText(result.coverLetter),
+        bq: aiText(result.bq),
+        resumeAdvice: aiText(result.resumeAdvice)
+      };
+    }
+
+    function setMaterialLoading(type) {
+      const targetId = materialTargetId(type);
+      if (targetId) $(targetId).textContent = `${materialTitle(type)}生成中...`;
+    }
+
+    function setAllMaterialsLoading() {
+      ["shortAnswer", "coverLetter", "bq", "resumeAdvice"].forEach(setMaterialLoading);
+    }
+
     function bindJDUnderstanding() {
-      $("jdAnalyzeButton").addEventListener("click", () => {
+      $("jdAnalyzeButton").addEventListener("click", async () => {
         const button = $("jdAnalyzeButton");
         const jdText = $("jdPasteText").value.trim();
         if (!jdText) {
-          const status = $("jdAnalyzeStatus");
-          status.className = "mt-3 rounded-[8px] border border-orange-200 bg-orange-50 px-3 py-2 text-xs font-semibold text-orange-800";
-          status.textContent = "请先粘贴完整 JD。空内容不会触发 AI 理解，也不会自动生成岗位分析。";
+          setInlineStatus("jdAnalyzeStatus", "请先粘贴完整 JD。空内容不会触发 AI 理解，也不会自动生成岗位分析。", "orange");
           return;
         }
         button.disabled = true;
         button.innerHTML = '<i data-lucide="loader-circle" class="h-4 w-4 animate-spin"></i> AI 正在理解 JD...';
         lucide.createIcons();
-        window.setTimeout(() => {
-          const parsed = parseJD(jdText);
-          $("jobRole").textContent = parsed.role;
-          $("jobKeywords").innerHTML = parsed.keywords
-            .map((keyword) => `<span class="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">${escapeHtml(keyword)}</span>`)
-            .join("");
-          generateAllMaterials(parsed);
-          const status = $("jdAnalyzeStatus");
-          status.className = "mt-3 rounded-[8px] border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700";
-          status.textContent = `AI 已理解 JD：识别岗位「${parsed.role}」，提取 ${parsed.keywords.length} 个关键词，并刷新材料生成方向。`;
+        setInlineStatus("jdAnalyzeStatus", "AI 正在分析岗位需求并生成材料。", "blue");
+        setAllMaterialsLoading();
+        try {
+          const parsed = await parseJDWithAI(jdText);
+          renderJDContext(parsed);
+          await generateAllMaterials(parsed);
+          setInlineStatus("jdAnalyzeStatus", `AI 已理解 JD：识别岗位「${parsed.role}」，提取 ${parsed.keywords.length} 个关键词，并刷新材料生成方向。`, "green");
+        } catch (error) {
+          setInlineStatus("jdAnalyzeStatus", error.message, "red");
+        } finally {
           button.disabled = false;
           button.innerHTML = '<i data-lucide="sparkles" class="h-4 w-4"></i> AI 理解 JD 并生成';
           lucide.createIcons();
-        }, 260);
+        }
       });
       document.querySelectorAll(".material-card").forEach((card) => {
         card.addEventListener("click", () => generateMaterial(card.dataset.material));
@@ -2098,6 +2505,7 @@
     }
 
     function getCurrentJDContext() {
+      if (state.currentJD) return state.currentJD;
       const jdText = $("jdPasteText").value.trim();
       if (jdText) return parseJD(jdText);
       const role = $("jobRole").textContent.trim() || "目标岗位";
@@ -2136,37 +2544,34 @@
       return { ...parsed, education, experience, campus, skills };
     }
 
-    function materialContent(type, context) {
-      const leadKeyword = context.keywords[0] || "岗位匹配";
-      if (type === "shortAnswer") {
-        return `字段短答已生成：可入职时间按实际情况填写；经历摘要突出「${context.experience}」中的${context.focus}；申请动机强调岗位要求与自身经历匹配，并能快速投入真实任务。`;
+    async function generateMaterial(type, parsed) {
+      if (!materialTargetId(type)) return;
+      setMaterialLoading(type);
+      try {
+        const materials = await generateMaterialsWithAI(parsed || getCurrentJDContext(), type);
+        renderMaterial(type, materials[type] || "AI 未返回可用内容，请补充 JD 或候选人事实后重试。");
+      } catch (error) {
+        renderMaterial(type, error.message);
+      } finally {
+        lucide.createIcons();
       }
-      if (type === "coverLetter") {
-        return `Cover Letter 已生成：我希望申请「${context.role}」。我的${context.education}、${context.experience}和${context.skills}经历，能支撑我围绕${context.focus}快速理解问题、拆解任务并推动结果落地。`;
-      }
-      if (type === "bq") {
-        return `BQ 已生成：1. 团队合作：围绕${context.experience}讲清目标、分工和协作；2. 冲突解决：说明如何用事实和优先级达成共识；3. Why role：结合${leadKeyword}和个人经历回答。`;
-      }
-      return `适配简历建议已生成：优先保留能证明${context.focus}的经历；将「${context.experience}」放在更靠前位置；弱化与「${context.role}」无关或成果不明确的内容。`;
     }
 
-    function generateMaterial(type, parsed) {
-      const context = getMaterialContext(parsed || getCurrentJDContext());
-      const targetId = {
-        shortAnswer: "materialShortAnswer",
-        coverLetter: "materialCoverLetter",
-        bq: "materialBQ",
-        resumeAdvice: "materialResumeAdvice"
-      }[type];
-      if (!targetId) return;
-      $(targetId).textContent = materialContent(type, context);
-      const card = document.querySelector(`.material-card[data-material="${type}"]`);
-      card?.classList.add("border-blue-300", "bg-blue-50/50");
-      window.setTimeout(() => card?.classList.remove("border-blue-300", "bg-blue-50/50"), 900);
-    }
-
-    function generateAllMaterials(parsed) {
-      ["shortAnswer", "coverLetter", "bq", "resumeAdvice"].forEach((type) => generateMaterial(type, parsed));
+    async function generateAllMaterials(parsed) {
+      const button = $("generateAllMaterialsButton");
+      if (button) button.disabled = true;
+      setAllMaterialsLoading();
+      try {
+        const materials = await generateMaterialsWithAI(parsed || getCurrentJDContext());
+        Object.entries(materials).forEach(([type, content]) => {
+          renderMaterial(type, content || "AI 未返回可用内容，请补充 JD 或候选人事实后重试。");
+        });
+      } catch (error) {
+        ["shortAnswer", "coverLetter", "bq", "resumeAdvice"].forEach((type) => renderMaterial(type, error.message));
+      } finally {
+        if (button) button.disabled = false;
+        lucide.createIcons();
+      }
     }
 
     function parseJD(text) {
@@ -2799,15 +3204,59 @@
       lucide.createIcons();
     }
 
+    async function polishDetailsWithAI(fields) {
+      const details = fields.map((field, index) => ({
+        index,
+        text: field.value.trim()
+      })).filter((item) => item.text);
+      if (!details.length) throw new Error("没有可压缩的经历内容。");
+      const prompt = `
+请压缩并优化这些简历经历 bullet。
+
+硬性规则：
+- 只能改写已有事实，不能新增项目、数据、工具、成果、奖项或职责。
+- 保留原有语义，表达更清楚、更像求职简历。
+- 每条 detail 可以多行输出，但总长度要比原文更紧凑。
+- 返回 JSON，不要 Markdown。
+
+JSON 结构：
+{"details":[{"index":0,"text":""}]}
+
+待压缩内容：
+${JSON.stringify(details, null, 2)}
+`;
+      const result = await callDeepSeek("AI 压缩", prompt, {
+        json: true,
+        temperature: 0.25,
+        maxTokens: 2200
+      });
+      return Array.isArray(result.details) ? result.details : [];
+    }
+
     function bindPolish() {
-      $("polishButton").addEventListener("click", () => {
-        document.querySelectorAll(".item-detail").forEach((field) => {
-          field.value = field.value
-            .replace("负责产品需求建立", "负责产品需求拆解与落地")
-            .replace("通过竞品分析、用户访谈和数据梳理", "结合竞品分析、用户访谈和数据梳理")
-            .replace("支持行业比较和投资判断", "支持行业比较与投资判断");
-        });
-        renderPreview();
+      $("polishButton").addEventListener("click", async () => {
+        const button = $("polishButton");
+        const original = button.innerHTML;
+        const fields = [...document.querySelectorAll(".item-detail")];
+        button.disabled = true;
+        button.innerHTML = '<i data-lucide="loader-circle" class="h-4 w-4 animate-spin"></i> AI 压缩中...';
+        lucide.createIcons();
+        try {
+          const polished = await polishDetailsWithAI(fields);
+          polished.forEach((item) => {
+            const field = fields[item.index];
+            const text = aiText(item.text);
+            if (field && text) field.value = text;
+          });
+          renderPreview();
+          showAiSettingsStatus("经历内容已由 AI 压缩；请检查事实是否仍准确。", "green");
+        } catch (error) {
+          showAiSettingsStatus(error.message, "red");
+        } finally {
+          button.disabled = false;
+          button.innerHTML = original;
+          lucide.createIcons();
+        }
       });
     }
 
@@ -2856,6 +3305,7 @@
       bindRemoveItems();
       bindSkillRows();
       bindFamilyInfo();
+      bindAiSettings();
       bindSmartPaste();
       bindExports();
       bindJDUnderstanding();
