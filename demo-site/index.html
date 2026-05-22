@@ -1077,30 +1077,42 @@
               </div>
               <div class="grid gap-3 sm:grid-cols-2">
                 <button class="material-card rounded-[10px] border border-slate-200 bg-white/75 p-3 text-left transition hover:border-blue-200 hover:bg-blue-50/40" data-material="shortAnswer" type="button">
-                  <div class="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-900">
-                    <i data-lucide="message-square-text" class="h-4 w-4 text-blue-600"></i>
-                    字段短答
+                  <div class="mb-2 flex items-center justify-between gap-2 text-sm font-semibold text-slate-900">
+                    <span class="flex items-center gap-2">
+                      <i data-lucide="message-square-text" class="h-4 w-4 text-blue-600"></i>
+                      字段短答
+                    </span>
+                    <i data-lucide="maximize-2" class="h-3.5 w-3.5 text-slate-400"></i>
                   </div>
                   <p id="materialShortAnswer" class="whitespace-pre-line text-xs leading-5 text-slate-500">可入职时间、经历摘要、为什么申请该岗位。</p>
                 </button>
                 <button class="material-card rounded-[10px] border border-slate-200 bg-white/75 p-3 text-left transition hover:border-violet-200 hover:bg-violet-50/40" data-material="coverLetter" type="button">
-                  <div class="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-900">
-                    <i data-lucide="mail" class="h-4 w-4 text-violet-600"></i>
-                    Cover Letter
+                  <div class="mb-2 flex items-center justify-between gap-2 text-sm font-semibold text-slate-900">
+                    <span class="flex items-center gap-2">
+                      <i data-lucide="mail" class="h-4 w-4 text-violet-600"></i>
+                      Cover Letter
+                    </span>
+                    <i data-lucide="maximize-2" class="h-3.5 w-3.5 text-slate-400"></i>
                   </div>
                   <p id="materialCoverLetter" class="whitespace-pre-line text-xs leading-5 text-slate-500">300 字中文版本，引用已勾选经历和关键成果。</p>
                 </button>
                 <button class="material-card rounded-[10px] border border-slate-200 bg-white/75 p-3 text-left transition hover:border-emerald-200 hover:bg-emerald-50/40" data-material="bq" type="button">
-                  <div class="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-900">
-                    <i data-lucide="list-checks" class="h-4 w-4 text-emerald-600"></i>
-                    Behavior Question
+                  <div class="mb-2 flex items-center justify-between gap-2 text-sm font-semibold text-slate-900">
+                    <span class="flex items-center gap-2">
+                      <i data-lucide="list-checks" class="h-4 w-4 text-emerald-600"></i>
+                      Behavior Question
+                    </span>
+                    <i data-lucide="maximize-2" class="h-3.5 w-3.5 text-slate-400"></i>
                   </div>
                   <p id="materialBQ" class="whitespace-pre-line text-xs leading-5 text-slate-500">团队合作、冲突解决、Why role。</p>
                 </button>
                 <button class="material-card rounded-[10px] border border-slate-200 bg-white/75 p-3 text-left transition hover:border-orange-200 hover:bg-orange-50/40" data-material="resumeAdvice" type="button">
-                  <div class="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-900">
-                    <i data-lucide="file-symlink" class="h-4 w-4 text-orange-600"></i>
-                    适配简历建议
+                  <div class="mb-2 flex items-center justify-between gap-2 text-sm font-semibold text-slate-900">
+                    <span class="flex items-center gap-2">
+                      <i data-lucide="file-symlink" class="h-4 w-4 text-orange-600"></i>
+                      适配简历建议
+                    </span>
+                    <i data-lucide="maximize-2" class="h-3.5 w-3.5 text-slate-400"></i>
                   </div>
                   <p id="materialResumeAdvice" class="whitespace-pre-line text-xs leading-5 text-slate-500">推荐保留与目标岗位最相关的经历，弱化无关内容。</p>
                 </button>
@@ -1305,12 +1317,36 @@
     </div>
   </div>
 
+  <div id="materialPreviewModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="materialPreviewTitle">
+    <div class="flex max-h-[88vh] w-full max-w-4xl flex-col overflow-hidden rounded-[14px] border border-slate-200 bg-white shadow-2xl">
+      <div class="flex items-center justify-between gap-4 border-b border-slate-200 px-5 py-4">
+        <div>
+          <p class="text-xs font-semibold uppercase text-slate-500">Generated Material</p>
+          <h3 id="materialPreviewTitle" class="mt-1 text-lg font-semibold text-slate-950">材料预览</h3>
+        </div>
+        <button id="closeMaterialPreviewButton" class="icon-button" type="button" aria-label="关闭预览" title="关闭预览">
+          <i data-lucide="x" class="h-5 w-5"></i>
+        </button>
+      </div>
+      <div class="overflow-auto px-5 py-5">
+        <div id="materialPreviewContent" class="whitespace-pre-line text-[15px] leading-8 text-slate-800"></div>
+      </div>
+      <div class="flex justify-end border-t border-slate-200 px-5 py-3">
+        <button id="copyMaterialPreviewButton" class="secondary-button" type="button">
+          <i data-lucide="copy" class="h-4 w-4"></i>
+          复制内容
+        </button>
+      </div>
+    </div>
+  </div>
+
   <script>
     const state = {
       lang: "zh",
       density: "standard",
       pluginConnected: false,
-      currentJD: null
+      currentJD: null,
+      generatedMaterials: {}
     };
 
     const BCV_SUPABASE_URL = "https://fsdashpviavdlxyicibr.supabase.co";
@@ -2403,9 +2439,52 @@ ${trimForAi(jdText, 9000)}
       const targetId = materialTargetId(type);
       if (!targetId) return;
       $(targetId).textContent = content;
+      state.generatedMaterials[type] = content;
       const card = document.querySelector(`.material-card[data-material="${type}"]`);
       card?.classList.add("border-blue-300", "bg-blue-50/50");
       window.setTimeout(() => card?.classList.remove("border-blue-300", "bg-blue-50/50"), 900);
+    }
+
+    function currentMaterialContent(type) {
+      return state.generatedMaterials[type] || $(materialTargetId(type))?.textContent?.trim() || "";
+    }
+
+    function openMaterialPreview(type, content = currentMaterialContent(type)) {
+      const modal = $("materialPreviewModal");
+      if (!modal) return;
+      $("materialPreviewTitle").textContent = materialTitle(type);
+      $("materialPreviewContent").textContent = content || "暂无内容。";
+      modal.classList.remove("hidden");
+      modal.classList.add("flex");
+      document.body.classList.add("overflow-hidden");
+      $("closeMaterialPreviewButton")?.focus();
+      lucide.createIcons();
+    }
+
+    function closeMaterialPreview() {
+      const modal = $("materialPreviewModal");
+      if (!modal) return;
+      modal.classList.add("hidden");
+      modal.classList.remove("flex");
+      document.body.classList.remove("overflow-hidden");
+    }
+
+    async function copyMaterialPreview() {
+      const text = $("materialPreviewContent")?.textContent || "";
+      if (!text) return;
+      try {
+        await navigator.clipboard.writeText(text);
+        const button = $("copyMaterialPreviewButton");
+        const original = button.innerHTML;
+        button.innerHTML = '<i data-lucide="check" class="h-4 w-4"></i> 已复制';
+        lucide.createIcons();
+        window.setTimeout(() => {
+          button.innerHTML = original;
+          lucide.createIcons();
+        }, 1200);
+      } catch (_error) {
+        showAiSettingsStatus("当前浏览器不允许自动复制，请手动选择预览内容复制。", "orange");
+      }
     }
 
     function resumeFactsForAi() {
@@ -2499,9 +2578,20 @@ ${JSON.stringify(resumeFactsForAi(), null, 2)}
         }
       });
       document.querySelectorAll(".material-card").forEach((card) => {
-        card.addEventListener("click", () => generateMaterial(card.dataset.material));
+        card.addEventListener("click", () => openOrGenerateMaterial(card.dataset.material));
       });
       $("generateAllMaterialsButton")?.addEventListener("click", () => generateAllMaterials());
+    }
+
+    function bindMaterialPreview() {
+      $("closeMaterialPreviewButton")?.addEventListener("click", closeMaterialPreview);
+      $("copyMaterialPreviewButton")?.addEventListener("click", copyMaterialPreview);
+      $("materialPreviewModal")?.addEventListener("click", (event) => {
+        if (event.target === $("materialPreviewModal")) closeMaterialPreview();
+      });
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") closeMaterialPreview();
+      });
     }
 
     function getCurrentJDContext() {
@@ -2544,14 +2634,26 @@ ${JSON.stringify(resumeFactsForAi(), null, 2)}
       return { ...parsed, education, experience, campus, skills };
     }
 
-    async function generateMaterial(type, parsed) {
+    async function openOrGenerateMaterial(type) {
+      if (!materialTargetId(type)) return;
+      if (state.generatedMaterials[type]) {
+        openMaterialPreview(type);
+        return;
+      }
+      await generateMaterial(type, undefined, { openPreview: true });
+    }
+
+    async function generateMaterial(type, parsed, options = {}) {
       if (!materialTargetId(type)) return;
       setMaterialLoading(type);
       try {
         const materials = await generateMaterialsWithAI(parsed || getCurrentJDContext(), type);
-        renderMaterial(type, materials[type] || "AI 未返回可用内容，请补充 JD 或候选人事实后重试。");
+        const content = materials[type] || "AI 未返回可用内容，请补充 JD 或候选人事实后重试。";
+        renderMaterial(type, content);
+        if (options.openPreview) openMaterialPreview(type, content);
       } catch (error) {
         renderMaterial(type, error.message);
+        if (options.openPreview) openMaterialPreview(type, error.message);
       } finally {
         lucide.createIcons();
       }
@@ -3309,6 +3411,7 @@ ${JSON.stringify(details, null, 2)}
       bindSmartPaste();
       bindExports();
       bindJDUnderstanding();
+      bindMaterialPreview();
       bindPlugin();
       bindPolish();
       bindNavActive();
