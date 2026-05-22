@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>字节招聘表单直填测试</title>
+  <style>
+    body {
+      margin: 0;
+      color: #111827;
+      font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+    }
+
+    main {
+      width: 1180px;
+      margin: 0 auto;
+      padding: 40px 0;
+    }
+
+    .section {
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      gap: 120px;
+      border-top: 1px solid #e5e7eb;
+      padding: 56px 0;
+    }
+
+    h2 {
+      margin: 0;
+      font-size: 28px;
+    }
+
+    .hint {
+      margin-top: 44px;
+      color: #6b7280;
+      font-size: 16px;
+    }
+
+    .form {
+      display: grid;
+      gap: 28px;
+    }
+
+    .field-label {
+      margin-bottom: 8px;
+      font-size: 20px;
+      font-weight: 700;
+    }
+
+    .field-label::after {
+      content: "*";
+      color: #ef4444;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 190px 1fr;
+    }
+
+    .date-row {
+      display: grid;
+      grid-template-columns: 1fr 24px 1fr;
+      align-items: center;
+      gap: 14px;
+    }
+
+    input,
+    .select-like {
+      width: 100%;
+      height: 52px;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      padding: 0 14px;
+      font: inherit;
+      font-size: 18px;
+    }
+
+    .select-like {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #fff;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="section">
+      <div>
+        <h2>基本信息</h2>
+        <p class="hint">请填写基本信息</p>
+      </div>
+      <div class="form">
+        <div>
+          <div class="field-label">姓名</div>
+          <input data-test="name" />
+        </div>
+        <div>
+          <div class="field-label">手机号码</div>
+          <div class="row">
+            <div class="select-like">+86 <span>⌄</span></div>
+            <input data-test="phone" />
+          </div>
+        </div>
+        <div>
+          <div class="field-label">邮箱</div>
+          <input data-test="email" />
+        </div>
+        <div>
+          <div class="field-label">个人证件</div>
+          <div class="row">
+            <div class="select-like">中国 - 港澳居... <span>⌄</span></div>
+            <input data-test="identity" />
+          </div>
+        </div>
+        <div>
+          <div class="field-label">期望工作地点</div>
+          <div class="select-like" data-test="city">请选择 <span>⌄</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div>
+        <h2>教育经历</h2>
+        <p class="hint">请填写教育经历</p>
+      </div>
+      <div class="form">
+        <div>
+          <div class="field-label">起止时间</div>
+          <div class="date-row">
+            <input data-test="educationStart" />
+            <span>-</span>
+            <input data-test="educationEnd" />
+          </div>
+        </div>
+        <div>
+          <div class="field-label">学历类型</div>
+          <input data-test="educationType" />
+        </div>
+        <div>
+          <div class="field-label">学校名称</div>
+          <input data-test="school" />
+        </div>
+        <div>
+          <div class="field-label">学历</div>
+          <input data-test="educationLevel" />
+        </div>
+        <div>
+          <div class="field-label">学院</div>
+          <input data-test="college" />
+        </div>
+        <div>
+          <div class="field-label">专业</div>
+          <input data-test="major" />
+        </div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

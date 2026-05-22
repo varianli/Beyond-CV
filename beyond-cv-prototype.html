@@ -1,0 +1,2873 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Beyond CV - Web Prototype</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    :root {
+      --ink: #111827;
+      --muted: #6b7280;
+      --line: rgba(15, 23, 42, 0.12);
+      --glass: rgba(255, 255, 255, 0.74);
+      --panel: rgba(255, 255, 255, 0.9);
+      --blue: #007aff;
+      --green: #34c759;
+      --orange: #ff9500;
+      --red: #ff3b30;
+      --bg-a: #f6f8fb;
+      --bg-b: #edf3f8;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    main {
+      display: flex;
+      flex-direction: column;
+    }
+
+    #resume {
+      order: -1;
+    }
+
+    #dashboard {
+      order: -2;
+    }
+
+    body {
+      min-height: 100vh;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 14% -8%, rgba(0, 122, 255, 0.12), transparent 30%),
+        radial-gradient(circle at 88% 0%, rgba(52, 199, 89, 0.10), transparent 28%),
+        linear-gradient(135deg, var(--bg-a), var(--bg-b) 52%, #f9fafb);
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Microsoft YaHei", sans-serif;
+      letter-spacing: 0;
+    }
+
+    .app-shell {
+      display: grid;
+      grid-template-columns: 248px minmax(0, 1fr);
+      min-height: 100vh;
+    }
+
+    .sidebar {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      border-right: 1px solid var(--line);
+      background: rgba(248, 250, 252, 0.78);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      padding: 20px 16px;
+      z-index: 40;
+    }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 30;
+      border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+      background: rgba(247, 250, 252, 0.78);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+    }
+
+    .glass-panel {
+      border: 1px solid rgba(15, 23, 42, 0.10);
+      background: var(--panel);
+      box-shadow: 0 18px 50px rgba(15, 23, 42, 0.07);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+    }
+
+    .soft-panel {
+      border: 1px solid rgba(15, 23, 42, 0.09);
+      background: rgba(255, 255, 255, 0.68);
+    }
+
+    .nav-link {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      height: 40px;
+      border-radius: 8px;
+      padding: 0 12px;
+      color: #475569;
+      font-size: 14px;
+      transition: 160ms ease;
+    }
+
+    .nav-link:hover,
+    .nav-link.active {
+      color: #0f172a;
+      background: rgba(255, 255, 255, 0.82);
+      box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.06);
+    }
+
+    .icon-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      border: 1px solid rgba(15, 23, 42, 0.10);
+      background: rgba(255, 255, 255, 0.76);
+      color: #334155;
+      transition: 160ms ease;
+    }
+
+    .icon-button:hover {
+      transform: translateY(-1px);
+      background: white;
+      box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+    }
+
+    .primary-button,
+    .secondary-button,
+    .quiet-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: 38px;
+      border-radius: 8px;
+      padding: 0 14px;
+      font-size: 14px;
+      font-weight: 600;
+      transition: 160ms ease;
+      white-space: nowrap;
+    }
+
+    .primary-button {
+      color: white;
+      background: var(--blue);
+      box-shadow: 0 10px 24px rgba(0, 122, 255, 0.23);
+    }
+
+    .primary-button:hover {
+      background: #006ee6;
+      transform: translateY(-1px);
+    }
+
+    .secondary-button {
+      color: #0f172a;
+      border: 1px solid rgba(15, 23, 42, 0.12);
+      background: rgba(255, 255, 255, 0.86);
+    }
+
+    .secondary-button:hover {
+      background: white;
+      transform: translateY(-1px);
+    }
+
+    .quiet-button {
+      color: #475569;
+      background: rgba(255, 255, 255, 0.52);
+    }
+
+    .segmented {
+      display: inline-grid;
+      grid-auto-flow: column;
+      gap: 2px;
+      border: 1px solid rgba(15, 23, 42, 0.10);
+      border-radius: 9px;
+      padding: 3px;
+      background: rgba(226, 232, 240, 0.58);
+    }
+
+    .segmented button {
+      border-radius: 7px;
+      padding: 7px 12px;
+      color: #64748b;
+      font-size: 13px;
+      font-weight: 600;
+      transition: 160ms ease;
+    }
+
+    .segmented button.active {
+      color: #0f172a;
+      background: white;
+      box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: var(--green);
+      box-shadow: 0 0 0 4px rgba(52, 199, 89, 0.14);
+    }
+
+    .status-dot.pending {
+      background: var(--orange);
+      box-shadow: 0 0 0 4px rgba(255, 149, 0, 0.14);
+    }
+
+    .metric-ring {
+      --value: 78;
+      width: 92px;
+      height: 92px;
+      border-radius: 999px;
+      background: conic-gradient(var(--blue) calc(var(--value) * 1%), rgba(148, 163, 184, 0.18) 0);
+      display: grid;
+      place-items: center;
+    }
+
+    .metric-ring::before {
+      content: "";
+      width: 72px;
+      height: 72px;
+      border-radius: 999px;
+      background: white;
+      position: absolute;
+    }
+
+    .resume-workbench {
+      display: grid;
+      grid-template-columns: minmax(560px, 1.05fr) minmax(340px, 0.72fr);
+      gap: 14px;
+      align-items: start;
+      max-width: 1280px;
+      margin: 0 auto;
+    }
+
+    .resume-preview-sticky {
+      min-width: 0;
+      position: sticky;
+      top: 92px;
+      height: fit-content;
+    }
+
+    .resume-form-scroll {
+      min-width: 0;
+      max-height: calc(100vh - 132px);
+      overflow: auto;
+      padding-right: 4px;
+    }
+
+    .a4-page {
+      width: min(100%, 640px);
+      aspect-ratio: 210 / 297;
+      margin: 0 auto;
+      background: white;
+      color: #111827;
+      box-shadow: 0 22px 46px rgba(15, 23, 42, 0.14);
+      border: 1px solid rgba(15, 23, 42, 0.10);
+      padding: var(--page-pad, 24px);
+      font-family: "SimSun", "Songti SC", "Times New Roman", serif;
+      overflow: hidden;
+    }
+
+    #previewName {
+      font-size: var(--resume-name, 22px);
+    }
+
+    .resume-density-comfortable {
+      --page-pad: 27px;
+      --resume-body: 10px;
+      --resume-line: 1.34;
+      --resume-gap: 8px;
+    }
+
+    .resume-density-standard {
+      --page-pad: 24px;
+      --resume-body: 9.2px;
+      --resume-line: 1.22;
+      --resume-gap: 6px;
+    }
+
+    .resume-density-compact {
+      --page-pad: 21px;
+      --resume-body: 8.4px;
+      --resume-line: 1.14;
+      --resume-gap: 4px;
+    }
+
+    .a4-page .resume-body {
+      font-size: var(--resume-body, 10.5px);
+      line-height: var(--resume-line, 1.34);
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+
+    .a4-page .section-gap {
+      margin-top: var(--resume-gap, 8px);
+    }
+
+    .resume-header-grid {
+      display: grid;
+      grid-template-columns: 70px minmax(0, 1fr) 70px;
+      align-items: start;
+      gap: 12px;
+    }
+
+    .avatar-slot {
+      display: grid;
+      place-items: center;
+      width: 58px;
+      height: 72px;
+      margin-left: auto;
+      border: 1px dashed rgba(15, 23, 42, 0.34);
+      background: rgba(248, 250, 252, 0.72);
+      color: #64748b;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", sans-serif;
+      font-size: 9px;
+      line-height: 1.15;
+      text-align: center;
+    }
+
+    .resume-section-title {
+      border-bottom: 1px solid #111827;
+      padding-bottom: 2px;
+      font-size: var(--resume-title, 11px);
+      font-weight: 700;
+    }
+
+    .resume-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 12px;
+      align-items: baseline;
+      min-width: 0;
+    }
+
+    .resume-row > span {
+      min-width: 0;
+      overflow-wrap: anywhere;
+    }
+
+    .resume-row-right {
+      white-space: nowrap;
+      text-align: right;
+    }
+
+    .resume-muted {
+      color: #374151;
+    }
+
+    .resume-fit-warning {
+      outline: 2px solid rgba(255, 149, 0, 0.45);
+      outline-offset: -3px;
+    }
+
+    .form-section {
+      border-top: 1px solid rgba(15, 23, 42, 0.16);
+      padding-top: 16px;
+    }
+
+    .form-section-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 12px;
+    }
+
+    .form-section-title h4 {
+      font-size: 14px;
+      font-weight: 700;
+      color: #0f172a;
+    }
+
+    .parse-flash {
+      animation: parseFlash 1.3s ease;
+    }
+
+    @keyframes parseFlash {
+      0% { box-shadow: 0 0 0 0 rgba(0, 122, 255, 0.30); border-color: rgba(0, 122, 255, 0.55); }
+      100% { box-shadow: 0 0 0 10px rgba(0, 122, 255, 0); }
+    }
+
+    .field-input,
+    .field-textarea {
+      width: 100%;
+      border: 1px solid rgba(15, 23, 42, 0.11);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.84);
+      color: #0f172a;
+      outline: none;
+      transition: 160ms ease;
+    }
+
+    .field-input {
+      height: 38px;
+      padding: 0 12px;
+      font-size: 14px;
+    }
+
+    .field-textarea {
+      min-height: 84px;
+      resize: vertical;
+      padding: 10px 12px;
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .field-input:focus,
+    .field-textarea:focus {
+      border-color: rgba(0, 122, 255, 0.58);
+      box-shadow: 0 0 0 4px rgba(0, 122, 255, 0.12);
+      background: white;
+    }
+
+    .switch {
+      width: 42px;
+      height: 24px;
+      border-radius: 999px;
+      background: #cbd5e1;
+      padding: 3px;
+      transition: 160ms ease;
+    }
+
+    .switch span {
+      display: block;
+      width: 18px;
+      height: 18px;
+      border-radius: 999px;
+      background: white;
+      box-shadow: 0 2px 5px rgba(15, 23, 42, 0.22);
+      transition: 160ms ease;
+    }
+
+    .switch.on {
+      background: var(--green);
+    }
+
+    .switch.on span {
+      transform: translateX(18px);
+    }
+
+    .timeline-line {
+      background: linear-gradient(180deg, rgba(0, 122, 255, 0.58), rgba(52, 199, 89, 0.42));
+      width: 2px;
+      border-radius: 999px;
+    }
+
+    @media (max-width: 1180px) {
+      .resume-workbench {
+        grid-template-columns: 1fr;
+        max-width: 760px;
+      }
+
+      .a4-page {
+        width: min(100%, 640px);
+      }
+    }
+
+    @media print {
+      body {
+        background: white !important;
+      }
+
+      body * {
+        visibility: hidden !important;
+      }
+
+      #resumePage,
+      #resumePage * {
+        visibility: visible !important;
+      }
+
+      #resumePage {
+        position: fixed !important;
+        inset: 0 !important;
+        width: 210mm !important;
+        height: 297mm !important;
+        margin: 0 !important;
+        box-shadow: none !important;
+        border: none !important;
+      }
+    }
+
+    @media (max-width: 860px) {
+      .app-shell {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar {
+        position: fixed;
+        left: 12px;
+        right: 12px;
+        bottom: 12px;
+        top: auto;
+        height: auto;
+        padding: 8px;
+        border: 1px solid rgba(15, 23, 42, 0.10);
+        border-radius: 14px;
+      }
+
+      .sidebar .brand,
+      .sidebar .sidebar-meta,
+      .sidebar .nav-label {
+        display: none;
+      }
+
+      .sidebar nav {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 4px;
+      }
+
+      .nav-link {
+        justify-content: center;
+        height: 44px;
+        padding: 0;
+      }
+
+      main {
+        padding-bottom: 88px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand mb-7 flex items-center gap-3 px-2">
+        <div class="grid h-10 w-10 place-items-center rounded-[10px] bg-slate-950 text-white shadow-lg shadow-slate-900/15">
+          <i data-lucide="sparkles" class="h-5 w-5"></i>
+        </div>
+        <div>
+          <div class="text-[15px] font-semibold text-slate-950">Beyond CV</div>
+          <div class="text-xs text-slate-500">个人求职资料操作系统</div>
+        </div>
+      </div>
+      <nav class="space-y-1">
+        <a class="nav-link active" href="#dashboard" aria-label="工作台">
+          <i data-lucide="layout-dashboard" class="h-4 w-4"></i>
+          <span class="nav-label">工作台</span>
+        </a>
+        <a class="nav-link" href="#resume" aria-label="简历">
+          <i data-lucide="file-text" class="h-4 w-4"></i>
+          <span class="nav-label">简历</span>
+        </a>
+        <a class="nav-link" href="#jobs" aria-label="岗位适配">
+          <i data-lucide="briefcase-business" class="h-4 w-4"></i>
+          <span class="nav-label">岗位适配</span>
+        </a>
+        <a class="nav-link" href="#extension" aria-label="插件">
+          <i data-lucide="puzzle" class="h-4 w-4"></i>
+          <span class="nav-label">插件</span>
+        </a>
+        <a class="nav-link" href="#privacy" aria-label="设置">
+          <i data-lucide="settings" class="h-4 w-4"></i>
+          <span class="nav-label">设置</span>
+        </a>
+      </nav>
+      <div class="sidebar-meta mt-7 rounded-[10px] border border-slate-200/80 bg-white/65 p-3">
+        <div class="mb-2 flex items-center gap-2 text-xs font-semibold text-slate-700">
+          <span class="status-dot"></span>
+          自动保存已开启
+        </div>
+        <p class="text-xs leading-5 text-slate-500">最近保存：11:42。敏感字段默认不进入生成和插件填入。</p>
+      </div>
+    </aside>
+
+    <div class="min-w-0">
+      <header class="topbar">
+        <div class="mx-auto flex max-w-[1440px] items-center justify-between gap-4 px-5 py-4 md:px-7">
+          <div class="min-w-0">
+            <div class="flex items-center gap-2 text-xs font-medium text-slate-500">
+              <span>Web App</span>
+              <span>/</span>
+              <span>Dashboard</span>
+            </div>
+            <h1 class="truncate text-xl font-semibold text-slate-950">早上好，求职者</h1>
+          </div>
+          <div class="flex items-center gap-2">
+            <button class="icon-button" title="搜索">
+              <i data-lucide="search" class="h-4 w-4"></i>
+            </button>
+            <button id="topPluginBadge" class="secondary-button hidden sm:inline-flex" type="button">
+              <span class="status-dot pending"></span>
+              插件可下载
+            </button>
+            <button class="icon-button" title="用户菜单">
+              <i data-lucide="circle-user-round" class="h-4 w-4"></i>
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <main class="mx-auto max-w-[1440px] space-y-6 px-5 py-6 md:px-7">
+        <section id="dashboard" class="scroll-mt-24">
+          <div class="grid gap-4 xl:grid-cols-[1.3fr_0.9fr]">
+            <div class="glass-panel rounded-[14px] p-4">
+              <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <div class="min-w-0">
+                  <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+                    <span class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/70 px-3 py-1 text-xs font-semibold text-slate-600">
+                      <i data-lucide="wand-sparkles" class="h-3.5 w-3.5 text-blue-500"></i>
+                      通用求职资料库
+                    </span>
+                    <span class="text-sm font-semibold text-slate-950">从经历库生成简历，并用真实插件辅助官网字段填写</span>
+                    <span class="text-xs text-slate-500">插件包已生成，安装后可在招聘网站扫描字段。</span>
+                  </div>
+                </div>
+                <div class="flex shrink-0 flex-wrap items-center gap-2">
+                    <a href="#resume" class="primary-button">
+                      <i data-lucide="file-pen-line" class="h-4 w-4"></i>
+                      制作简历
+                    </a>
+                    <a href="beyond-cv-extension.zip" download class="secondary-button">
+                      <i data-lucide="download" class="h-4 w-4"></i>
+                      下载插件
+                    </a>
+                  <div class="rounded-[8px] border border-emerald-200/80 bg-emerald-50/80 px-3 py-2 text-emerald-900">
+                    <div class="flex items-center gap-2 text-xs font-semibold text-emerald-700">
+                    <i data-lucide="timer-reset" class="h-4 w-4"></i>
+                    本周效率 · 节省约 96 分钟
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <div class="mt-4 grid gap-4 lg:grid-cols-2">
+            <article class="glass-panel rounded-[14px] p-5">
+              <div class="mb-4 grid h-10 w-10 place-items-center rounded-[9px] bg-violet-50 text-violet-600">
+                <i data-lucide="briefcase-business" class="h-5 w-5"></i>
+              </div>
+              <h3 class="text-lg font-semibold text-slate-950">岗位适配材料</h3>
+              <p class="mt-2 text-sm leading-6 text-slate-600">JD 解析后生成短答、开放题和简历 bullet 建议。</p>
+              <a href="#jobs" class="secondary-button mt-4 w-full">查看适配摘要</a>
+            </article>
+            <article class="glass-panel rounded-[14px] p-5">
+              <div class="mb-4 grid h-10 w-10 place-items-center rounded-[9px] bg-amber-50 text-amber-600">
+                <i data-lucide="shield-check" class="h-5 w-5"></i>
+              </div>
+              <h3 class="text-lg font-semibold text-slate-950">可安装填表插件</h3>
+              <p class="mt-2 text-sm leading-6 text-slate-600">安装后扫描真实招聘网页，敏感信息填入前必须确认。</p>
+              <a href="#extension" class="secondary-button mt-4 w-full">下载与测试</a>
+            </article>
+          </div>
+
+          <div class="mt-4 grid gap-4 lg:grid-cols-[1.05fr_0.95fr]">
+            <div class="glass-panel rounded-[14px] p-5">
+              <div class="mb-4 flex items-center justify-between">
+                <h3 class="font-semibold text-slate-950">最近岗位材料</h3>
+                <button class="quiet-button">全部</button>
+              </div>
+              <div class="space-y-3">
+                <div class="soft-panel flex items-center justify-between gap-3 rounded-[10px] p-3">
+                  <div>
+                    <div class="text-sm font-semibold text-slate-900">目标岗位 A - 实习 / 校招岗位</div>
+                    <div class="mt-1 text-xs text-slate-500">已生成：字段短答、BQ、适配简历建议</div>
+                  </div>
+                  <span class="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">已生成</span>
+                </div>
+                <div class="soft-panel flex items-center justify-between gap-3 rounded-[10px] p-3">
+                  <div>
+                    <div class="text-sm font-semibold text-slate-900">目标岗位 B - 全职 / 实习岗位</div>
+                    <div class="mt-1 text-xs text-slate-500">最近编辑：今天 10:18</div>
+                  </div>
+                  <span class="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">草稿</span>
+                </div>
+              </div>
+            </div>
+            <div class="glass-panel rounded-[14px] p-5">
+              <div class="mb-4 flex items-center justify-between">
+                <h3 class="font-semibold text-slate-950">待补资料</h3>
+                <span class="text-xs font-semibold text-slate-500">3 项</span>
+              </div>
+              <div class="space-y-3">
+                <label class="flex items-center gap-3 text-sm text-slate-700">
+                  <input type="checkbox" checked class="h-4 w-4 rounded border-slate-300 text-blue-600" />
+                  项目 / 经历量化成果
+                </label>
+                <label class="flex items-center gap-3 text-sm text-slate-700">
+                  <input type="checkbox" checked class="h-4 w-4 rounded border-slate-300 text-blue-600" />
+                  开放题素材：冲突解决
+                </label>
+                <label class="flex items-center gap-3 text-sm text-slate-700">
+                  <input id="familyInfoToggle" type="checkbox" class="h-4 w-4 rounded border-slate-300 text-blue-600" />
+                  家庭信息字段默认关闭
+                </label>
+                <div id="familyInfoFields" class="hidden rounded-[10px] border border-slate-200 bg-white/70 p-3">
+                  <div class="mb-3 flex items-center justify-between gap-3">
+                    <div class="text-xs font-semibold text-slate-500">选中后手动填写，默认不会批量填入</div>
+                    <button id="addFamilyMemberButton" class="secondary-button min-h-[32px] px-3 text-xs" type="button">
+                      <i data-lucide="plus" class="h-3.5 w-3.5"></i>
+                      添加行
+                    </button>
+                  </div>
+                  <div id="familyInfoRows" class="space-y-2">
+                    <div class="family-row grid gap-2 sm:grid-cols-[1fr_1fr_1fr_auto]">
+                      <input class="field-input family-name" placeholder="姓名" aria-label="家庭成员姓名" />
+                      <input class="field-input family-relation" placeholder="关系" aria-label="家庭成员关系" />
+                      <input class="field-input family-position" placeholder="职位" aria-label="家庭成员职位" />
+                      <button class="remove-family-row-button icon-button text-red-600" type="button" aria-label="删除该行" title="删除该行">
+                        <i data-lucide="trash-2" class="h-4 w-4"></i>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="resume" class="scroll-mt-24 glass-panel rounded-[14px] p-4 md:p-5">
+          <div class="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <p class="text-xs font-semibold uppercase text-slate-500">Resume Builder</p>
+              <h2 class="mt-1 text-2xl font-semibold text-slate-950">简历制作 - 编辑与实时预览</h2>
+            </div>
+            <div class="flex flex-wrap items-center gap-3">
+              <div class="segmented" role="tablist" aria-label="简历语言">
+                <button id="langZh" class="active" type="button">中文</button>
+                <button id="langEn" type="button">English</button>
+              </div>
+              <button id="saveResumeButton" class="secondary-button" type="button">
+                <i data-lucide="save" class="h-4 w-4"></i>
+                已保存
+              </button>
+              <button id="exportWordButton" class="secondary-button" type="button">
+                <i data-lucide="file-text" class="h-4 w-4"></i>
+                导出 Word
+              </button>
+              <button id="exportPdfButton" class="primary-button" type="button">
+                <i data-lucide="download" class="h-4 w-4"></i>
+                导出 PDF
+              </button>
+            </div>
+          </div>
+
+          <div class="resume-workbench">
+            <aside class="resume-preview-sticky soft-panel rounded-[12px] p-4">
+              <div class="mb-4 flex items-center justify-between">
+                <div>
+                  <h3 class="text-sm font-semibold text-slate-900">A4 简历预览</h3>
+                  <p id="previewMeta" class="mt-1 text-xs text-slate-500">中文版本 · 标准密度</p>
+                </div>
+                <span id="resumeFitBadge" class="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">已适配一页</span>
+              </div>
+              <div id="resumePage" class="a4-page">
+                <div class="resume-header-grid">
+                  <div aria-hidden="true"></div>
+                  <div class="text-center">
+                    <h4 id="previewName" class="text-[22px] font-bold tracking-normal">姓名</h4>
+                    <p id="previewContact" class="resume-body mt-1 text-slate-700">联系电话 | 邮箱 | 地址</p>
+                  </div>
+                  <button class="avatar-slot" type="button" title="可选头像占位">
+                    <span>+<br />头像<br />可选</span>
+                  </button>
+                </div>
+                <div class="section-gap">
+                  <div id="previewEducationTitle" class="resume-section-title">教育经历</div>
+                  <div id="previewEducation" class="resume-body mt-1"></div>
+                </div>
+                <div class="section-gap">
+                  <div id="previewExpTitle" class="resume-section-title">实习经历</div>
+                  <div id="previewExperience" class="resume-body mt-1 space-y-1"></div>
+                </div>
+                <div class="section-gap">
+                  <div id="previewCampusTitle" class="resume-section-title">在校活动</div>
+                  <div id="previewCampus" class="resume-body mt-1 space-y-1"></div>
+                </div>
+                <div id="previewSkillsSection" class="section-gap">
+                  <div id="previewSkillsTitle" class="resume-section-title">技能、活动与兴趣</div>
+                  <div id="previewSkills" class="resume-body mt-1"></div>
+                </div>
+              </div>
+            </aside>
+
+            <section class="resume-form-scroll soft-panel rounded-[12px] p-4">
+              <div class="mb-4 flex items-center justify-between">
+                <div>
+                  <h3 class="text-sm font-semibold text-slate-900">简历文本识别与逐项填写</h3>
+                  <p class="mt-1 text-xs text-slate-500">粘贴完整简历或经历记录后，系统会拆分教育、实习、项目、活动和技能；也可逐项手动填写。</p>
+                </div>
+                <button id="polishButton" class="secondary-button" type="button">
+                  <i data-lucide="wand-sparkles" class="h-4 w-4"></i>
+                  AI 压缩
+                </button>
+              </div>
+
+              <div class="mb-4 rounded-[10px] border border-blue-100 bg-blue-50/50 p-3">
+                <label class="mb-2 block text-xs font-semibold text-blue-800">完整经历文本识别</label>
+                <textarea id="smartPasteText" class="field-textarea min-h-[170px]" placeholder="粘贴完整简历、经历库或项目记录。即使格式不完全统一，系统也会先识别个人信息、教育、实习、项目、校园活动和技能，再填入下方字段；原文会保留在这里，方便逐项核对。"></textarea>
+                <button id="smartPasteButton" class="primary-button mt-3" type="button">
+                  <i data-lucide="scan-text" class="h-4 w-4"></i>
+                  识别并填入字段
+                </button>
+                <div id="smartPasteStatus" class="mt-3 hidden rounded-[8px] border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700"></div>
+              </div>
+
+              <div class="space-y-5">
+                <div class="form-section rounded-[10px] border border-slate-200 bg-white/72 p-4">
+                  <div class="form-section-title">
+                    <h4>基础信息</h4>
+                  </div>
+                  <div class="grid gap-3 sm:grid-cols-2">
+                    <label class="text-xs font-semibold text-slate-500">姓名
+                      <input id="candidateName" class="field-input mt-1" placeholder="姓名" />
+                    </label>
+                    <label class="text-xs font-semibold text-slate-500">联系电话
+                      <input id="candidatePhone" class="field-input mt-1" inputmode="tel" placeholder="联系电话" />
+                    </label>
+                    <label class="text-xs font-semibold text-slate-500">邮箱
+                      <input id="candidateEmail" class="field-input mt-1" type="email" placeholder="邮箱" />
+                    </label>
+                    <label class="text-xs font-semibold text-slate-500">地址
+                      <input id="candidateAddress" class="field-input mt-1" placeholder="地址" />
+                    </label>
+                  </div>
+                </div>
+
+                <div class="resume-module form-section" data-module="education">
+                  <div class="form-section-title">
+                    <div>
+                      <h4>教育背景</h4>
+                      <p class="text-xs text-slate-500">勾选后加入简历，可添加多段教育经历。</p>
+                    </div>
+                    <button class="add-item-button secondary-button" data-target="educationList" type="button">
+                      <i data-lucide="plus" class="h-4 w-4"></i>
+                      添加教育
+                    </button>
+                  </div>
+                  <div id="educationList" class="space-y-3">
+                    <div class="resume-item rounded-[10px] border border-slate-200 bg-white/72 p-3" data-type="education">
+                      <div class="mb-3 flex items-center justify-between gap-3">
+                        <label class="flex items-center gap-2 text-sm font-semibold text-slate-800">
+                          <input class="include-check h-4 w-4 rounded border-slate-300 text-blue-600" type="checkbox" checked />
+                          加入简历
+                        </label>
+                        <button class="remove-item-button quiet-button min-h-[32px] px-2 text-xs text-red-600" type="button" aria-label="删除该段教育经历" title="删除该段教育经历">
+                          <i data-lucide="trash-2" class="h-4 w-4"></i>
+                          删除
+                        </button>
+                      </div>
+                      <div class="grid gap-3 sm:grid-cols-2">
+                        <input class="field-input item-school" value="[大学名称]" aria-label="学校名称" />
+                        <input class="field-input item-city" value="[城市]，[国家/地区]" aria-label="城市" />
+                        <input class="field-input item-degree" value="[学位]，[专业]" aria-label="学位专业" />
+                        <input class="field-input item-date" value="预计 [毕业时间]" aria-label="毕业时间" />
+                        <textarea class="field-textarea item-detail sm:col-span-2">GPA：[xx] / 4.0；荣誉：[xx]；相关课程：[经济学 / 会计 / 金融 / 商业分析等课程]</textarea>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="resume-module form-section" data-module="experience">
+                  <div class="form-section-title">
+                    <div>
+                      <h4>实习经历</h4>
+                      <p class="text-xs text-slate-500">不限制 3 段，用户自行勾选进入简历的经历。</p>
+                    </div>
+                    <button id="addExperienceButton" class="add-item-button secondary-button" data-target="experienceList" type="button">
+                      <i data-lucide="plus" class="h-4 w-4"></i>
+                      添加实习
+                    </button>
+                  </div>
+                  <div id="experienceList" class="space-y-3">
+                    <div class="resume-item rounded-[10px] border border-slate-200 bg-white/72 p-3" data-type="experience">
+                      <div class="mb-3 flex items-center justify-between gap-3">
+                        <label class="flex items-center gap-2 text-sm font-semibold text-slate-800">
+                          <input class="include-check h-4 w-4 rounded border-slate-300 text-blue-600" type="checkbox" checked />
+                          加入简历
+                        </label>
+                        <button class="remove-item-button quiet-button min-h-[32px] px-2 text-xs text-red-600" type="button" aria-label="删除该段实习经历" title="删除该段实习经历">
+                          <i data-lucide="trash-2" class="h-4 w-4"></i>
+                          删除
+                        </button>
+                      </div>
+                      <div class="grid gap-3 sm:grid-cols-2">
+                        <input class="field-input item-company" value="[公司名称]" aria-label="公司名称" />
+                        <input class="field-input item-city" value="[城市]，[国家/地区]" aria-label="城市" />
+                        <input class="field-input item-role" value="[职位名称]，[部门/组别]" aria-label="职位名称" />
+                        <input class="field-input item-date" value="[开始时间] - [结束时间]" aria-label="实习时间" />
+                        <textarea class="field-textarea item-detail sm:col-span-2">[一句话总结你负责的工作和整体成果]
+精选项目 / 业务 / 研究经验：
+• [项目 #1：你如何带队或推动某项工作，带来了效率、时间、成本或收入上的提升]
+• [项目 #2：你分析了什么问题，得出了什么结论，如何支持项目继续推进]
+• [项目 #3：你创建了什么方法或流程，带来了效率或增长提升]</textarea>
+                      </div>
+                    </div>
+                    <div class="resume-item rounded-[10px] border border-slate-200 bg-white/72 p-3" data-type="experience">
+                      <div class="mb-3 flex items-center justify-between gap-3">
+                        <label class="flex items-center gap-2 text-sm font-semibold text-slate-800">
+                          <input class="include-check h-4 w-4 rounded border-slate-300 text-blue-600" type="checkbox" checked />
+                          加入简历
+                        </label>
+                        <button class="remove-item-button quiet-button min-h-[32px] px-2 text-xs text-red-600" type="button" aria-label="删除该段实习经历" title="删除该段实习经历">
+                          <i data-lucide="trash-2" class="h-4 w-4"></i>
+                          删除
+                        </button>
+                      </div>
+                      <div class="grid gap-3 sm:grid-cols-2">
+                        <input class="field-input item-company" value="[公司名称]" aria-label="公司名称" />
+                        <input class="field-input item-city" value="[城市]，[国家/地区]" aria-label="城市" />
+                        <input class="field-input item-role" value="[职位名称]，[部门/组别]" aria-label="职位名称" />
+                        <input class="field-input item-date" value="[开始时间] - [结束时间]" aria-label="实习时间" />
+                        <textarea class="field-textarea item-detail sm:col-span-2">[一句话总结你负责的工作和整体成果]
+• [通过创建或管理某项流程/工具推动团队完成工作，带来销售、利润或成本节约]
+• [分析某个方案选项，并基于时间和资源约束提出建议，最终支持落地]
+• [制定面向潜在用户/客户/投资人的推广策略，提升认知、转化或承诺]</textarea>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="resume-module form-section" data-module="campus">
+                  <div class="form-section-title">
+                    <div>
+                      <h4>在校活动</h4>
+                      <p class="text-xs text-slate-500">社团、比赛、公益、刊物、学生组织等。</p>
+                    </div>
+                    <button class="add-item-button secondary-button" data-target="campusList" type="button">
+                      <i data-lucide="plus" class="h-4 w-4"></i>
+                      添加活动
+                    </button>
+                  </div>
+                  <div id="campusList" class="space-y-3">
+                    <div class="resume-item rounded-[10px] border border-slate-200 bg-white/72 p-3" data-type="campus">
+                      <label class="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-800">
+                        <input class="include-check h-4 w-4 rounded border-slate-300 text-blue-600" type="checkbox" checked />
+                        加入简历
+                      </label>
+                      <div class="grid gap-3 sm:grid-cols-2">
+                        <input class="field-input item-company" value="[学生组织 / 社团 / 比赛名称]" aria-label="活动名称" />
+                        <input class="field-input item-city" value="[城市]，[国家/地区]" aria-label="城市" />
+                        <input class="field-input item-role" value="[职位 / 角色]" aria-label="角色" />
+                        <input class="field-input item-date" value="[开始时间] - [结束时间]" aria-label="活动时间" />
+                        <textarea class="field-textarea item-detail sm:col-span-2">[一句话总结你负责的工作和整体成果]
+• [通过宣传活动招募 xx 名成员]
+• [组织会议、嘉宾分享、社区活动或比赛项目]</textarea>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="form-section rounded-[10px] border border-slate-200 bg-white/72 p-4">
+                  <div class="form-section-title">
+                    <div>
+                      <h4>技能、活动与兴趣</h4>
+                      <p class="text-xs text-slate-500">可选模块，不填写或取消勾选时不会进入简历。</p>
+                    </div>
+                    <button id="addSkillButton" class="secondary-button" type="button">
+                      <i data-lucide="plus" class="h-4 w-4"></i>
+                      添加行
+                    </button>
+                  </div>
+                  <div id="skillsList" class="space-y-2">
+                    <div class="skill-item grid gap-2 sm:grid-cols-[auto_1fr_auto]">
+                      <input class="skill-include h-4 w-4 self-center rounded border-slate-300 text-blue-600" type="checkbox" checked aria-label="该行加入简历" />
+                      <input id="skillsLanguages" class="skill-input field-input" value="语言：流利掌握 [xx]；可进行工作沟通 [xx]" />
+                      <button class="remove-skill-button icon-button text-red-600" type="button" aria-label="删除该行" title="删除该行">
+                        <i data-lucide="trash-2" class="h-4 w-4"></i>
+                      </button>
+                    </div>
+                    <div class="skill-item grid gap-2 sm:grid-cols-[auto_1fr_auto]">
+                      <input class="skill-include h-4 w-4 self-center rounded border-slate-300 text-blue-600" type="checkbox" checked aria-label="该行加入简历" />
+                      <input id="skillsTechnical" class="skill-input field-input" value="技术技能：[列出与目标岗位相关的工具、方法或专业技能]" />
+                      <button class="remove-skill-button icon-button text-red-600" type="button" aria-label="删除该行" title="删除该行">
+                        <i data-lucide="trash-2" class="h-4 w-4"></i>
+                      </button>
+                    </div>
+                    <div class="skill-item grid gap-2 sm:grid-cols-[auto_1fr_auto]">
+                      <input class="skill-include h-4 w-4 self-center rounded border-slate-300 text-blue-600" type="checkbox" checked aria-label="该行加入简历" />
+                      <input id="skillsCerts" class="skill-input field-input" value="证书与培训：[与目标岗位相关的课程、项目或证书]" />
+                      <button class="remove-skill-button icon-button text-red-600" type="button" aria-label="删除该行" title="删除该行">
+                        <i data-lucide="trash-2" class="h-4 w-4"></i>
+                      </button>
+                    </div>
+                    <div class="skill-item grid gap-2 sm:grid-cols-[auto_1fr_auto]">
+                      <input class="skill-include h-4 w-4 self-center rounded border-slate-300 text-blue-600" type="checkbox" checked aria-label="该行加入简历" />
+                      <input id="skillsActivities" class="skill-input field-input" value="活动：[学生组织、志愿服务、独立项目]" />
+                      <button class="remove-skill-button icon-button text-red-600" type="button" aria-label="删除该行" title="删除该行">
+                        <i data-lucide="trash-2" class="h-4 w-4"></i>
+                      </button>
+                    </div>
+                    <div class="skill-item grid gap-2 sm:grid-cols-[auto_1fr_auto]">
+                      <input class="skill-include h-4 w-4 self-center rounded border-slate-300 text-blue-600" type="checkbox" checked aria-label="该行加入简历" />
+                      <input id="skillsInterests" class="skill-input field-input" value="兴趣：[保持 1-2 行，具体但不过度展开]" />
+                      <button class="remove-skill-button icon-button text-red-600" type="button" aria-label="删除该行" title="删除该行">
+                        <i data-lucide="trash-2" class="h-4 w-4"></i>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <section id="jobs" class="scroll-mt-24 glass-panel rounded-[14px] p-5">
+          <div class="mb-5 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+            <div>
+              <p class="text-xs font-semibold uppercase text-slate-500">Job Fit</p>
+              <h2 class="mt-1 text-2xl font-semibold text-slate-950">岗位适配摘要</h2>
+              <p class="mt-2 text-sm leading-6 text-slate-600">将 JD 解析、材料生成和插件调用串起来，保证内容来自真实经历。</p>
+            </div>
+            <button class="primary-button">
+              <i data-lucide="plus" class="h-4 w-4"></i>
+              新建岗位适配
+            </button>
+          </div>
+          <div class="grid gap-4 lg:grid-cols-[0.9fr_1.1fr_0.9fr]">
+            <div class="soft-panel rounded-[12px] p-4">
+              <h3 class="mb-3 text-sm font-semibold text-slate-900">JD 语义理解</h3>
+              <div class="space-y-3 text-sm">
+                <div class="rounded-[9px] border border-blue-100 bg-blue-50/50 p-3">
+                  <label class="mb-2 block text-xs font-semibold text-blue-800">粘贴完整 JD</label>
+                  <textarea id="jdPasteText" class="field-textarea min-h-[132px]" placeholder="把岗位描述、任职要求、加分项整段粘贴进来，AI 会理解岗位名称、关键词和材料生成方向。"></textarea>
+                  <button id="jdAnalyzeButton" class="primary-button mt-3 w-full" type="button">
+                    <i data-lucide="sparkles" class="h-4 w-4"></i>
+                    AI 理解 JD 并生成
+                  </button>
+                  <div id="jdAnalyzeStatus" class="mt-3 hidden rounded-[8px] border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700"></div>
+                </div>
+                <div class="rounded-[9px] bg-white/70 p-3">
+                  <div class="text-xs font-semibold text-slate-500">岗位</div>
+                  <div id="jobRole" class="mt-1 font-semibold text-slate-900">目标岗位</div>
+                </div>
+                <div class="rounded-[9px] bg-white/70 p-3">
+                  <div class="text-xs font-semibold text-slate-500">关键词</div>
+                  <div id="jobKeywords" class="mt-2 flex flex-wrap gap-2">
+                    <span class="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">沟通协作</span>
+                    <span class="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">数据分析</span>
+                    <span class="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">项目推进</span>
+                    <span class="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">问题解决</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="soft-panel rounded-[12px] p-4">
+              <div class="mb-3 flex items-center justify-between gap-3">
+                <h3 class="text-sm font-semibold text-slate-900">生成材料</h3>
+                <button id="generateAllMaterialsButton" class="secondary-button min-h-[32px] px-3 text-xs" type="button">
+                  <i data-lucide="sparkles" class="h-3.5 w-3.5"></i>
+                  全部生成
+                </button>
+              </div>
+              <div class="grid gap-3 sm:grid-cols-2">
+                <button class="material-card rounded-[10px] border border-slate-200 bg-white/75 p-3 text-left transition hover:border-blue-200 hover:bg-blue-50/40" data-material="shortAnswer" type="button">
+                  <div class="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-900">
+                    <i data-lucide="message-square-text" class="h-4 w-4 text-blue-600"></i>
+                    字段短答
+                  </div>
+                  <p id="materialShortAnswer" class="text-xs leading-5 text-slate-500">可入职时间、经历摘要、为什么申请该岗位。</p>
+                </button>
+                <button class="material-card rounded-[10px] border border-slate-200 bg-white/75 p-3 text-left transition hover:border-violet-200 hover:bg-violet-50/40" data-material="coverLetter" type="button">
+                  <div class="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-900">
+                    <i data-lucide="mail" class="h-4 w-4 text-violet-600"></i>
+                    Cover Letter
+                  </div>
+                  <p id="materialCoverLetter" class="text-xs leading-5 text-slate-500">300 字中文版本，引用已勾选经历和关键成果。</p>
+                </button>
+                <button class="material-card rounded-[10px] border border-slate-200 bg-white/75 p-3 text-left transition hover:border-emerald-200 hover:bg-emerald-50/40" data-material="bq" type="button">
+                  <div class="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-900">
+                    <i data-lucide="list-checks" class="h-4 w-4 text-emerald-600"></i>
+                    Behavior Question
+                  </div>
+                  <p id="materialBQ" class="text-xs leading-5 text-slate-500">团队合作、冲突解决、Why role。</p>
+                </button>
+                <button class="material-card rounded-[10px] border border-slate-200 bg-white/75 p-3 text-left transition hover:border-orange-200 hover:bg-orange-50/40" data-material="resumeAdvice" type="button">
+                  <div class="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-900">
+                    <i data-lucide="file-symlink" class="h-4 w-4 text-orange-600"></i>
+                    适配简历建议
+                  </div>
+                  <p id="materialResumeAdvice" class="text-xs leading-5 text-slate-500">推荐保留与目标岗位最相关的经历，弱化无关内容。</p>
+                </button>
+              </div>
+            </div>
+            <div class="soft-panel rounded-[12px] p-4">
+              <h3 class="mb-3 text-sm font-semibold text-slate-900">可调用内容选择</h3>
+              <div class="space-y-3">
+                <label class="flex items-center gap-3 rounded-[9px] bg-white/75 p-3 text-sm font-semibold text-slate-800">
+                  <input class="h-4 w-4 rounded border-slate-300 text-blue-600" type="checkbox" checked />
+                  教育背景
+                </label>
+                <label class="flex items-center gap-3 rounded-[9px] bg-white/75 p-3 text-sm font-semibold text-slate-800">
+                  <input class="h-4 w-4 rounded border-slate-300 text-blue-600" type="checkbox" checked />
+                  已勾选实习经历
+                </label>
+                <label class="flex items-center gap-3 rounded-[9px] bg-white/75 p-3 text-sm font-semibold text-slate-800">
+                  <input class="h-4 w-4 rounded border-slate-300 text-blue-600" type="checkbox" checked />
+                  在校活动
+                </label>
+                <label class="flex items-center gap-3 rounded-[9px] bg-white/75 p-3 text-sm font-semibold text-slate-800">
+                  <input class="h-4 w-4 rounded border-slate-300 text-blue-600" type="checkbox" />
+                  敏感字段需单独确认
+                </label>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="extension" class="scroll-mt-24 glass-panel rounded-[14px] p-5">
+          <div class="mb-5 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <p class="text-xs font-semibold uppercase text-slate-500">Chrome Extension</p>
+              <h2 class="mt-1 text-2xl font-semibold text-slate-950">插件下载与安装</h2>
+              <p class="mt-2 text-sm leading-6 text-slate-600">下载开发版 Chrome 插件，在真实招聘网站扫描表单、预览匹配结果，并确认后填入。</p>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <a id="downloadExtensionButton" href="beyond-cv-extension.zip" download class="primary-button">
+                <i data-lucide="download" class="h-4 w-4"></i>
+                下载插件 ZIP
+              </a>
+              <a href="beyond-cv-extension/README.md" target="_blank" class="secondary-button">
+                <i data-lucide="book-open" class="h-4 w-4"></i>
+                安装说明
+              </a>
+            </div>
+          </div>
+
+          <div class="grid gap-4 xl:grid-cols-[0.85fr_1.15fr]">
+            <div class="space-y-4">
+              <div class="soft-panel rounded-[12px] p-4">
+                <div class="flex items-center justify-between gap-4">
+                  <div>
+                    <p class="text-xs font-semibold text-slate-500">当前状态</p>
+                    <h3 id="extensionMainStatus" class="mt-1 text-xl font-semibold text-slate-950">开发版插件包已就绪</h3>
+                    <p id="extensionSubStatus" class="mt-2 text-sm leading-6 text-slate-600">文件名：beyond-cv-extension.zip。解压后在 Chrome 扩展页加载文件夹即可使用。</p>
+                  </div>
+                  <div id="extensionStatusIcon" class="grid h-14 w-14 place-items-center rounded-[12px] bg-orange-50 text-orange-600">
+                    <i data-lucide="plug" class="h-6 w-6"></i>
+                  </div>
+                </div>
+              </div>
+
+              <div class="soft-panel rounded-[12px] p-4">
+                <div class="mb-3 flex items-start justify-between gap-3">
+                  <div>
+                    <p class="text-xs font-semibold text-slate-500">Supabase Sync</p>
+                    <h3 class="mt-1 text-sm font-semibold text-slate-900">绑定简历与插件资料</h3>
+                    <p class="mt-1 text-xs leading-5 text-slate-500">创建账户后保存当前简历，插件用同一账户同步最新资料。</p>
+                  </div>
+                  <i data-lucide="database-zap" class="mt-1 h-5 w-5 text-blue-600"></i>
+                </div>
+                <div class="grid gap-2 sm:grid-cols-2">
+                  <input id="accountEmailInput" class="field-input" type="email" autocomplete="email" placeholder="邮箱" />
+                  <input id="accountPasswordInput" class="field-input" type="password" autocomplete="current-password" placeholder="密码（至少 6 位）" />
+                </div>
+                <div class="mt-2 grid gap-2 sm:grid-cols-3">
+                  <button id="createAccountButton" class="secondary-button justify-center" type="button">
+                    <i data-lucide="user-plus" class="h-4 w-4"></i>
+                    创建账户
+                  </button>
+                  <button id="loginAccountButton" class="secondary-button justify-center" type="button">
+                    <i data-lucide="log-in" class="h-4 w-4"></i>
+                    登录
+                  </button>
+                  <button id="logoutAccountButton" class="secondary-button justify-center" type="button">
+                    <i data-lucide="log-out" class="h-4 w-4"></i>
+                    退出
+                  </button>
+                </div>
+                <div id="accountStatus" class="mt-2 text-xs font-semibold text-slate-500">未登录，也可使用同步码模式</div>
+                <div id="cloudSyncTokenBox" class="mb-3 rounded-[9px] border border-slate-200 bg-white/74 p-3 text-xs leading-5 text-slate-600">
+                  尚未生成同步码
+                </div>
+                <div class="grid gap-2 sm:grid-cols-2">
+                  <button id="syncResumeButton" class="primary-button justify-center" type="button">
+                    <i data-lucide="cloud-upload" class="h-4 w-4"></i>
+                    同步当前简历
+                  </button>
+                  <button id="copySyncTokenButton" class="secondary-button justify-center" type="button">
+                    <i data-lucide="copy" class="h-4 w-4"></i>
+                    复制同步码
+                  </button>
+                </div>
+                <div id="cloudSyncStatus" class="mt-3 text-xs font-semibold text-slate-500">等待同步</div>
+              </div>
+
+              <div class="soft-panel rounded-[12px] p-4">
+                <h3 class="mb-4 text-sm font-semibold text-slate-900">三步开始使用</h3>
+                <div class="grid grid-cols-[20px_1fr] gap-x-3">
+                  <div class="timeline-line row-span-3 ml-[9px]"></div>
+                  <div class="mb-4 rounded-[10px] bg-white/74 p-3">
+                    <div class="text-sm font-semibold text-slate-900">1. 下载并解压 ZIP</div>
+                    <div class="mt-1 text-xs leading-5 text-slate-500">得到 beyond-cv-extension 文件夹，里面是可加载的 Manifest V3 插件。</div>
+                  </div>
+                  <div class="mb-4 rounded-[10px] bg-white/74 p-3">
+                    <div class="text-sm font-semibold text-slate-900">2. Chrome 加载已解压扩展</div>
+                    <div class="mt-1 text-xs leading-5 text-slate-500">打开 chrome://extensions，开启开发者模式，选择解压后的插件文件夹。</div>
+                  </div>
+                  <div class="rounded-[10px] bg-white/74 p-3">
+                    <div class="text-sm font-semibold text-slate-900">3. 在招聘网站扫描并填入</div>
+                    <div class="mt-1 text-xs leading-5 text-slate-500">打开申请表，点击工具栏图标，确认字段后再填入，不会自动提交。</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
+              <div class="soft-panel rounded-[12px] p-4">
+                <h3 class="mb-4 text-sm font-semibold text-slate-900">使用边界</h3>
+                <div class="space-y-3">
+                  <div class="flex gap-3 rounded-[9px] bg-white/74 p-3">
+                    <i data-lucide="scan-line" class="mt-0.5 h-4 w-4 text-blue-600"></i>
+                    <p class="text-sm leading-6 text-slate-600">只在你主动点击扫描时分析当前页面。</p>
+                  </div>
+                  <div class="flex gap-3 rounded-[9px] bg-white/74 p-3">
+                    <i data-lucide="edit-3" class="mt-0.5 h-4 w-4 text-violet-600"></i>
+                    <p class="text-sm leading-6 text-slate-600">建议答案可编辑，填入前你可以修改语气和事实细节。</p>
+                  </div>
+                  <div class="flex gap-3 rounded-[9px] bg-white/74 p-3">
+                    <i data-lucide="shield-alert" class="mt-0.5 h-4 w-4 text-orange-600"></i>
+                    <p class="text-sm leading-6 text-slate-600">不会自动提交申请，也不会自动同意法律协议或 consent。</p>
+                  </div>
+                </div>
+              </div>
+
+              <div class="soft-panel rounded-[12px] p-4">
+                <div class="mb-4 flex items-center justify-between">
+                  <h3 class="text-sm font-semibold text-slate-900">本页测试表单</h3>
+                  <span id="testFillStatus" class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">等待测试</span>
+                </div>
+                <div class="space-y-3">
+                  <div>
+                    <label class="mb-1 block text-xs font-semibold text-slate-500">姓名</label>
+                    <input id="testName" class="field-input" placeholder="等待填入" />
+                  </div>
+                  <div>
+                    <label class="mb-1 block text-xs font-semibold text-slate-500">申请动机</label>
+                    <textarea id="testMotivation" class="field-textarea" placeholder="扫描后生成建议答案"></textarea>
+                  </div>
+                  <div class="rounded-[9px] border border-orange-200 bg-orange-50 p-3 text-xs leading-5 text-orange-800">
+                    <div class="mb-1 flex items-center gap-2 font-semibold">
+                      <i data-lucide="shield" class="h-3.5 w-3.5"></i>
+                      敏感字段提醒
+                    </div>
+                    家庭信息、成绩和证件类字段不会进入默认批量填入。
+                  </div>
+                  <button id="fillTestButton" class="primary-button w-full" type="button">
+                    <i data-lucide="mouse-pointer-click" class="h-4 w-4"></i>
+                    页面内演示填入
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="privacy" class="scroll-mt-24 glass-panel rounded-[14px] p-5">
+          <div class="grid gap-4 md:grid-cols-[1fr_1fr]">
+            <div>
+              <p class="text-xs font-semibold uppercase text-slate-500">Privacy</p>
+              <h2 class="mt-1 text-2xl font-semibold text-slate-950">资料安全与控制</h2>
+              <p class="mt-2 text-sm leading-6 text-slate-600">用户资料默认私有，敏感字段在生成和插件填入前都要被看见、可关闭、可确认。</p>
+            </div>
+            <div class="grid gap-3 sm:grid-cols-3">
+              <div class="rounded-[10px] border border-slate-200 bg-white/74 p-3">
+                <i data-lucide="lock-keyhole" class="h-5 w-5 text-slate-700"></i>
+                <div class="mt-2 text-sm font-semibold text-slate-900">私有资料库</div>
+              </div>
+              <div class="rounded-[10px] border border-slate-200 bg-white/74 p-3">
+                <i data-lucide="shield-check" class="h-5 w-5 text-slate-700"></i>
+                <div class="mt-2 text-sm font-semibold text-slate-900">敏感字段标记</div>
+              </div>
+              <div class="rounded-[10px] border border-slate-200 bg-white/74 p-3">
+                <i data-lucide="download-cloud" class="h-5 w-5 text-slate-700"></i>
+                <div class="mt-2 text-sm font-semibold text-slate-900">导出与删除</div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <script>
+    const state = {
+      lang: "zh",
+      density: "standard",
+      pluginConnected: false
+    };
+
+    const BCV_SUPABASE_URL = "https://fsdashpviavdlxyicibr.supabase.co";
+    const BCV_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZzZGFzaHB2aWF2ZGx4eWljaWJyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg1NzI3MTksImV4cCI6MjA5NDE0ODcxOX0.vsPRG6YJTUVenmLZsD-txUtIFMuMvxR3RdMtFGZVc6w";
+    const BCV_SYNC_ENDPOINT = `${BCV_SUPABASE_URL}/functions/v1/bcv-profile-sync`;
+    const BCV_AUTH_ENDPOINT = `${BCV_SUPABASE_URL}/auth/v1`;
+    const BCV_SYNC_TOKEN_KEY = "beyondCvSyncToken";
+    const BCV_AUTH_SESSION_KEY = "beyondCvAuthSession";
+    const bcvMemoryStore = {};
+
+    const $ = (id) => document.getElementById(id);
+    const itemTemplates = new Map();
+
+    function safeStorageGet(key) {
+      try {
+        return window.localStorage.getItem(key);
+      } catch (_error) {
+        return bcvMemoryStore[key] || null;
+      }
+    }
+
+    function safeStorageSet(key, value) {
+      bcvMemoryStore[key] = String(value);
+      try {
+        window.localStorage.setItem(key, String(value));
+      } catch (_error) {
+        return false;
+      }
+      return true;
+    }
+
+    function safeStorageRemove(key) {
+      delete bcvMemoryStore[key];
+      try {
+        window.localStorage.removeItem(key);
+      } catch (_error) {
+        return false;
+      }
+      return true;
+    }
+
+    function storageIsPersistent() {
+      try {
+        const key = "__bcv_storage_probe__";
+        window.localStorage.setItem(key, "1");
+        window.localStorage.removeItem(key);
+        return true;
+      } catch (_error) {
+        return false;
+      }
+    }
+
+    function renderPreview() {
+      $("previewName").textContent = $("candidateName").value || "姓名";
+      const contact = [$("candidatePhone").value, $("candidateEmail").value, $("candidateAddress").value].filter(Boolean).join(" | ");
+      $("previewContact").textContent = contact || "联系电话 | 邮箱 | 地址";
+      $("previewEducationTitle").textContent = state.lang === "zh" ? "教育经历" : "EDUCATION";
+      $("previewEducation").innerHTML = collectItems("education").map(renderStructuredItem).join("");
+      $("previewExpTitle").textContent = state.lang === "zh" ? "实习经历" : "INTERNSHIP EXPERIENCE";
+      $("previewExperience").innerHTML = collectItems("experience").map(renderStructuredItem).join("");
+      $("previewCampusTitle").textContent = state.lang === "zh" ? "在校活动" : "LEADERSHIP EXPERIENCE";
+      $("previewCampus").innerHTML = collectItems("campus").map(renderStructuredItem).join("");
+      const skillLines = collectSkillLines(true);
+      $("previewSkillsSection").style.display = skillLines.length ? "" : "none";
+      $("previewSkillsTitle").textContent = state.lang === "zh" ? "技能、活动与兴趣" : "SKILLS, ACTIVITIES & INTERESTS";
+      $("previewSkills").innerHTML = renderSkills(skillLines);
+
+      const fit = fitResumeToPage();
+      $("previewMeta").textContent = `${state.lang === "zh" ? "中文版本" : "English Version"} · 自动排版 ${fit.fontSize.toFixed(1)}px / ${fit.lineHeight.toFixed(2)}`;
+      updateFitBadge();
+    }
+
+    function fitResumeToPage() {
+      const page = $("resumePage");
+      page.className = "a4-page";
+      page.classList.remove("resume-fit-warning");
+      const previewScale = Math.min(1.23, Math.max(1, page.clientWidth / 520));
+      const base = {
+        pad: 24 * previewScale,
+        font: 10.2 * previewScale,
+        line: 1.30,
+        gap: 7 * previewScale,
+        name: 22 * previewScale,
+        title: 11 * previewScale
+      };
+      let pad = base.pad;
+      let font = base.font;
+      let line = base.line;
+      let gap = base.gap;
+      let name = base.name;
+      let title = base.title;
+
+      const apply = () => {
+        page.style.setProperty("--page-pad", `${pad}px`);
+        page.style.setProperty("--resume-body", `${font}px`);
+        page.style.setProperty("--resume-line", String(line));
+        page.style.setProperty("--resume-gap", `${gap}px`);
+        page.style.setProperty("--resume-name", `${name}px`);
+        page.style.setProperty("--resume-title", `${title}px`);
+      };
+      const overflowing = () => {
+        const pageOverflow = page.scrollHeight > page.clientHeight + 1 || page.scrollWidth > page.clientWidth + 1;
+        const childOverflow = [...page.querySelectorAll(".resume-row, .resume-row-right, .resume-body, .resume-section-title, #previewName, #previewContact")]
+          .some((el) => el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 1);
+        return pageOverflow || childOverflow;
+      };
+
+      apply();
+      for (let i = 0; i < 14 && overflowing(); i += 1) {
+        line = Math.max(1.05, line - 0.018);
+        gap = Math.max(3 * previewScale, gap - 0.25);
+        apply();
+      }
+      for (let i = 0; i < 28 && overflowing(); i += 1) {
+        font = Math.max(6.2 * previewScale, font - 0.16);
+        name = Math.max(16 * previewScale, name - 0.24);
+        title = Math.max(7.4 * previewScale, title - 0.11);
+        pad = Math.max(18 * previewScale, pad - 0.18);
+        apply();
+      }
+      for (let i = 0; i < 12 && overflowing(); i += 1) {
+        font = Math.max(5.6 * previewScale, font - 0.08);
+        name = Math.max(15 * previewScale, name - 0.14);
+        title = Math.max(6.8 * previewScale, title - 0.08);
+        line = Math.max(1.0, line - 0.006);
+        pad = Math.max(16 * previewScale, pad - 0.12);
+        apply();
+      }
+      if (overflowing()) page.classList.add("resume-fit-warning");
+      return { fontSize: font, lineHeight: line };
+    }
+
+    function collectItems(type) {
+      return [...document.querySelectorAll(`.resume-item[data-type="${type}"]`)]
+        .filter((item) => item.querySelector(".include-check")?.checked)
+        .map((item) => ({
+          org: fieldValue(item, ".item-school") || fieldValue(item, ".item-company"),
+          city: fieldValue(item, ".item-city"),
+          role: fieldValue(item, ".item-degree") || fieldValue(item, ".item-role"),
+          date: fieldValue(item, ".item-date"),
+          detail: fieldValue(item, ".item-detail")
+        }));
+    }
+
+    function fieldValue(root, selector) {
+      return root.querySelector(selector)?.value?.trim() || "";
+    }
+
+    function renderStructuredItem(item) {
+      const bullets = item.detail.split(/\n+/).map((line) => line.trim()).filter(Boolean);
+      const summary = bullets.shift() || "";
+      return `
+        <div class="resume-row font-bold">
+          <span>${escapeHtml(item.org)}</span>
+          <span class="resume-row-right">${escapeHtml(item.city)}</span>
+        </div>
+        <div class="resume-row resume-muted">
+          <span>${escapeHtml(item.role)}</span>
+          <span class="resume-row-right">${escapeHtml(item.date)}</span>
+        </div>
+        ${summary ? `<div class="resume-muted">${escapeHtml(summary)}</div>` : ""}
+        ${bullets.map((line) => `<div class="flex gap-1"><span>•</span><span>${escapeHtml(line.replace(/^[-•]\s*/, ""))}</span></div>`).join("")}
+      `;
+    }
+
+    function collectSkillLines(onlyIncluded = false) {
+      return [...document.querySelectorAll(".skill-item")]
+        .filter((row) => !onlyIncluded || row.querySelector(".skill-include")?.checked)
+        .map((row) => row.querySelector(".skill-input")?.value.trim() || "")
+        .filter(Boolean);
+    }
+
+    function skillValue(id) {
+      return $(id)?.value.trim() || "";
+    }
+
+    function renderSkills(lines = collectSkillLines(true)) {
+      return lines.map((line) => {
+        const parts = line.split(/[：:]/);
+        if (parts.length > 1) {
+          const label = parts.shift();
+          return `<div><span class="font-bold">${escapeHtml(label)}:</span> ${escapeHtml(parts.join(":").trim())}</div>`;
+        }
+        return `<div>${escapeHtml(line)}</div>`;
+      }).join("");
+    }
+
+    function normalizeSyncMonth(value) {
+      const text = String(value || "").trim();
+      const match = text.match(/(20\d{2})[.\-/年\s]*(0?[1-9]|1[0-2])?/);
+      if (!match) return "";
+      const month = match[2] ? match[2].padStart(2, "0") : "06";
+      return `${match[1]}-${month}`;
+    }
+
+    function parseDateRange(dateText) {
+      const matches = String(dateText || "").match(/20\d{2}[.\-/年\s]*(?:0?[1-9]|1[0-2])?/g) || [];
+      return {
+        start: normalizeSyncMonth(matches[0] || ""),
+        end: normalizeSyncMonth(matches[matches.length - 1] || "")
+      };
+    }
+
+    function splitChineseName(name) {
+      const value = String(name || "").trim();
+      return {
+        lastName: value.length > 1 ? value.slice(0, 1) : "",
+        firstName: value.length > 1 ? value.slice(1) : value
+      };
+    }
+
+    function detectEducationLevel(text) {
+      if (/博士|PhD|Doctor/i.test(text)) return "博士";
+      if (/硕士|研究生|Master/i.test(text)) return "硕士";
+      if (/本科|学士|Bachelor/i.test(text)) return "本科";
+      if (/大专|专科/i.test(text)) return "大专";
+      return "";
+    }
+
+    function parseEducationRole(roleText) {
+      const parts = String(roleText || "").split(/[｜|]/).map((part) => part.trim()).filter(Boolean);
+      const full = parts.join(" ");
+      const educationLevel = detectEducationLevel(full);
+      const college = parts.find((part) => /学院|School|College|Faculty/i.test(part)) || "";
+      const majorSource = parts.find((part) => part !== college && /(专业|金融|经济|计算机|数据|管理|产品|会计|法律|数学|统计|工程)/.test(part)) || full;
+      const major = majorSource
+        .replace(/博士|硕士|本科|学士|研究生|Master|Bachelor|PhD|专业|：|:/gi, "")
+        .trim();
+      return {
+        degree: parts[0] || roleText || "",
+        educationLevel,
+        college,
+        major
+      };
+    }
+
+    function collectResumePayload() {
+      const education = collectItems("education");
+      const experience = collectItems("experience");
+      const campus = collectItems("campus");
+      return {
+        version: 1,
+        lang: state.lang,
+        density: state.density,
+        profile: {
+          name: $("candidateName").value.trim(),
+          phone: $("candidatePhone").value.trim(),
+          email: $("candidateEmail").value.trim(),
+          contact: [$("candidatePhone").value.trim(), $("candidateEmail").value.trim()].filter(Boolean).join(" | "),
+          address: $("candidateAddress").value.trim()
+        },
+        education,
+        experience,
+        campus,
+        skills: {
+          selected: collectSkillLines(true),
+          all: collectSkillLines(false),
+          languages: skillValue("skillsLanguages"),
+          technical: skillValue("skillsTechnical"),
+          certs: skillValue("skillsCerts"),
+          activities: skillValue("skillsActivities"),
+          interests: skillValue("skillsInterests")
+        },
+        familyInfo: $("familyInfoToggle")?.checked ? collectFamilyRows() : [],
+        smartPasteText: $("smartPasteText").value.trim(),
+        updatedAt: new Date().toISOString()
+      };
+    }
+
+    function buildPluginProfile(resume) {
+      const name = resume.profile.name;
+      const contact = resume.profile.contact || "";
+      const email = resume.profile.email || contact.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0] || "";
+      const phone = resume.profile.phone || contact.match(/(?:\+?86[\s-]?)?1[3-9]\d{9}/)?.[0]?.replace(/^(\+?86)?\s*/, "") || "";
+      const primaryEducation = resume.education[0] || {};
+      const educationRole = parseEducationRole(primaryEducation.role || "");
+      const educationDates = parseDateRange(primaryEducation.date || "");
+      const { firstName, lastName } = splitChineseName(name);
+      return {
+        name,
+        firstName,
+        lastName,
+        email,
+        phone,
+        city: resume.profile.address,
+        address: resume.profile.address,
+        school: primaryEducation.org || "",
+        degree: educationRole.degree,
+        educationType: "统招全日制",
+        educationLevel: educationRole.educationLevel,
+        educationStart: educationDates.start,
+        educationEnd: educationDates.end,
+        graduation: educationDates.end,
+        college: educationRole.college,
+        major: educationRole.major,
+        lab: "",
+        researchArea: "",
+        advisor: "",
+        skills: (resume.skills.selected || []).join("\n") || [resume.skills.technical, resume.skills.certs, resume.skills.languages].filter(Boolean).join("\n"),
+        summary: resume.experience[0]?.detail || resume.campus[0]?.detail || "",
+        motivation: "我希望申请该岗位，是因为它同时要求用户理解、数据分析和跨团队推动能力。我会结合已有项目经验，快速拆解用户问题、验证方案并推动落地。"
+      };
+    }
+
+    function setCloudSyncStatus(message, tone = "slate") {
+      const status = $("cloudSyncStatus");
+      status.textContent = message;
+      const tones = {
+        slate: "mt-3 text-xs font-semibold text-slate-500",
+        green: "mt-3 text-xs font-semibold text-emerald-700",
+        orange: "mt-3 text-xs font-semibold text-orange-700",
+        red: "mt-3 text-xs font-semibold text-red-700"
+      };
+      status.className = tones[tone] || tones.slate;
+    }
+
+    function refreshCloudSyncBox() {
+      const token = safeStorageGet(BCV_SYNC_TOKEN_KEY) || "";
+      $("cloudSyncTokenBox").textContent = token || "尚未生成同步码";
+      $("copySyncTokenButton").disabled = !token;
+    }
+
+    function setSaveButtonState(stateName, text) {
+      const button = $("saveResumeButton");
+      if (!button) return;
+      const icon = stateName === "saving" ? "loader-circle" : stateName === "error" ? "circle-alert" : "save";
+      const spin = stateName === "saving" ? " animate-spin" : "";
+      button.innerHTML = `<i data-lucide="${icon}" class="h-4 w-4${spin}"></i> ${text}`;
+      button.disabled = stateName === "saving";
+      lucide.createIcons();
+    }
+
+    function getAuthSession() {
+      try {
+        return JSON.parse(safeStorageGet(BCV_AUTH_SESSION_KEY) || "null");
+      } catch (_error) {
+        return null;
+      }
+    }
+
+    function authHeaders() {
+      const session = getAuthSession();
+      const token = session?.access_token || BCV_SUPABASE_ANON_KEY;
+      return {
+        "Content-Type": "application/json",
+        apikey: BCV_SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${token}`
+      };
+    }
+
+    function refreshAccountState() {
+      const session = getAuthSession();
+      const email = session?.user?.email || session?.email || "";
+      const storageHint = storageIsPersistent() ? "" : "（当前 file 页面禁止持久存储，本次会话临时有效）";
+      $("accountStatus").textContent = email ? `已登录：${email}${storageHint}` : `未登录，也可使用同步码模式${storageHint}`;
+      $("logoutAccountButton").disabled = !email;
+    }
+
+    async function supabaseAuth(path, body, options = {}) {
+      const url = new URL(`${BCV_AUTH_ENDPOINT}${path}`);
+      if (options.redirectTo) url.searchParams.set("redirect_to", options.redirectTo);
+      const response = await fetch(url.toString(), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          apikey: BCV_SUPABASE_ANON_KEY
+        },
+        body: JSON.stringify(body)
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.msg || result.error_description || result.error || "账户请求失败");
+      return result;
+    }
+
+    async function createAccount() {
+      const email = $("accountEmailInput").value.trim();
+      const password = $("accountPasswordInput").value;
+      if (!email || password.length < 6) {
+        setCloudSyncStatus("请输入邮箱和至少 6 位密码。", "orange");
+        return;
+      }
+      setCloudSyncStatus("正在创建账户...", "slate");
+      try {
+        const resume = collectResumePayload();
+        const response = await fetch(BCV_SYNC_ENDPOINT, {
+          method: "POST",
+          headers: authHeaders(),
+          body: JSON.stringify({
+            action: "demo_signup",
+            email,
+            password,
+            token: safeStorageGet(BCV_SYNC_TOKEN_KEY) || "",
+            resume,
+            profile: buildPluginProfile(resume),
+            source: "beyond-cv-prototype"
+          })
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || "创建账户失败");
+        if (result.access_token) {
+          safeStorageSet(BCV_AUTH_SESSION_KEY, JSON.stringify({ ...result, email }));
+          if (result.sync?.token) safeStorageSet(BCV_SYNC_TOKEN_KEY, result.sync.token);
+          refreshAccountState();
+          refreshCloudSyncBox();
+          const mailText = result.emailNotification?.status === "sent"
+            ? "通知邮件已发送。"
+            : "通知邮件已写入 Supabase outbox。";
+          setSaveButtonState("saved", "已云端保存");
+          setCloudSyncStatus(`账户已创建，简历已保存到 Supabase。${mailText}`, "green");
+        } else {
+          setCloudSyncStatus("账户已创建，可直接登录。", "green");
+        }
+      } catch (error) {
+        setCloudSyncStatus(`创建账户失败：${error.message}`, "red");
+      }
+    }
+
+    async function loginAccount() {
+      const email = $("accountEmailInput").value.trim();
+      const password = $("accountPasswordInput").value;
+      if (!email || !password) {
+        setCloudSyncStatus("请输入邮箱和密码。", "orange");
+        return;
+      }
+      setCloudSyncStatus("正在登录...", "slate");
+      try {
+        const result = await supabaseAuth("/token?grant_type=password", { email, password });
+        safeStorageSet(BCV_AUTH_SESSION_KEY, JSON.stringify({ ...result, email }));
+        refreshAccountState();
+        setCloudSyncStatus("已登录。保存简历后，插件可用同一账户同步资料。", "green");
+      } catch (error) {
+        setCloudSyncStatus(`登录失败：${error.message}`, "red");
+      }
+    }
+
+    function logoutAccount() {
+      safeStorageRemove(BCV_AUTH_SESSION_KEY);
+      refreshAccountState();
+      setCloudSyncStatus("已退出账户。仍可使用同步码模式。", "slate");
+    }
+
+    async function syncResumeToCloud(options = {}) {
+      const button = $("syncResumeButton");
+      const resume = collectResumePayload();
+      if (!resume.profile.name) {
+        setCloudSyncStatus("请先填写姓名，再同步到后端。", "orange");
+        setSaveButtonState("error", "缺少姓名");
+        return;
+      }
+      const session = getAuthSession();
+      if (options.requireAccount && !session?.access_token) {
+        setCloudSyncStatus("请先在 Supabase Sync 区域创建账户或登录，然后再保存到账号。", "orange");
+        setSaveButtonState("error", "先登录");
+        document.getElementById("extension")?.scrollIntoView({ behavior: "smooth", block: "start" });
+        $("accountEmailInput")?.focus();
+        return;
+      }
+      if (button) {
+        button.disabled = true;
+        button.innerHTML = '<i data-lucide="loader-circle" class="h-4 w-4 animate-spin"></i> 同步中';
+      }
+      setSaveButtonState("saving", "保存中");
+      setCloudSyncStatus("正在写入 Supabase...", "slate");
+      try {
+        const existingToken = safeStorageGet(BCV_SYNC_TOKEN_KEY) || "";
+        const response = await fetch(BCV_SYNC_ENDPOINT, {
+          method: "POST",
+          headers: authHeaders(),
+          body: JSON.stringify({
+            action: "upsert",
+            token: existingToken,
+            resume,
+            profile: buildPluginProfile(resume),
+            source: "beyond-cv-prototype"
+          })
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || "同步失败");
+        if (result.token || existingToken) safeStorageSet(BCV_SYNC_TOKEN_KEY, result.token || existingToken);
+        refreshCloudSyncBox();
+        const mode = result.mode === "account" ? "账户同步" : "同步码同步";
+        setCloudSyncStatus(`已${mode}到后端：${new Date(result.updatedAt).toLocaleString()}`, "green");
+        setSaveButtonState("saved", "已云端保存");
+      } catch (error) {
+        setCloudSyncStatus(`同步失败：${error.message}`, "red");
+        setSaveButtonState("error", "保存失败");
+      } finally {
+        if (button) {
+          button.disabled = false;
+          button.innerHTML = '<i data-lucide="cloud-upload" class="h-4 w-4"></i> 同步当前简历';
+        }
+        lucide.createIcons();
+      }
+    }
+
+    async function copySyncToken() {
+      const token = safeStorageGet(BCV_SYNC_TOKEN_KEY) || "";
+      if (!token) return;
+      try {
+        if (navigator.clipboard?.writeText) {
+          await navigator.clipboard.writeText(token);
+        } else {
+          throw new Error("clipboard api unavailable");
+        }
+        setCloudSyncStatus("同步码已复制，可粘贴到插件弹窗。", "green");
+      } catch (_error) {
+        const scratch = document.createElement("textarea");
+        scratch.value = token;
+        scratch.setAttribute("readonly", "");
+        scratch.style.position = "fixed";
+        scratch.style.left = "-9999px";
+        document.body.appendChild(scratch);
+        scratch.select();
+        const copied = document.execCommand("copy");
+        scratch.remove();
+        setCloudSyncStatus(copied ? "同步码已复制，可粘贴到插件弹窗。" : "同步码已显示在上方，可手动复制。", copied ? "green" : "orange");
+      }
+    }
+
+    function updateFitBadge() {
+      const checked = document.querySelectorAll(".include-check:checked").length;
+      const badge = $("resumeFitBadge");
+      if (checked <= 6 && state.density !== "comfortable") {
+        badge.className = "rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700";
+        badge.textContent = "已适配一页";
+      } else if (checked <= 6) {
+        badge.className = "rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700";
+        badge.textContent = "内容较满";
+      } else {
+        badge.className = "rounded-full bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700";
+        badge.textContent = "建议删减";
+      }
+    }
+
+    function escapeHtml(text) {
+      return text.replace(/[&<>"']/g, (char) => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#039;"
+      })[char]);
+    }
+
+    function bindEditor() {
+      document.querySelector("#resume").addEventListener("input", (event) => {
+        if (event.target.matches("input, textarea, select")) renderPreview();
+      });
+      document.querySelector("#resume").addEventListener("change", (event) => {
+        if (event.target.matches("input, textarea, select")) renderPreview();
+      });
+    }
+
+    function setLanguage(lang) {
+      state.lang = lang;
+      document.querySelectorAll(".segmented button").forEach((button) => button.classList.remove("active"));
+      $(lang === "zh" ? "langZh" : "langEn").classList.add("active");
+      renderPreview();
+    }
+
+    function defaultItemValue(field, type) {
+      if (field.type === "checkbox") return true;
+      if (field.classList.contains("item-date")) {
+        return type === "education" ? "预计 [毕业时间]" : "[开始时间] - [结束时间]";
+      }
+      return "";
+    }
+
+    function resetResumeItem(item) {
+      const type = item.dataset.type;
+      item.querySelectorAll("input, textarea").forEach((field) => {
+        if (field.type === "checkbox") {
+          field.checked = defaultItemValue(field, type);
+        } else {
+          field.value = defaultItemValue(field, type);
+        }
+      });
+    }
+
+    function cloneResumeItem(list) {
+      if (!list) return null;
+      const template = itemTemplates.get(list.id) || list.querySelector(".resume-item");
+      if (!template) return null;
+      const clone = template.cloneNode(true);
+      resetResumeItem(clone);
+      return clone;
+    }
+
+    function bindAddItems() {
+      document.querySelectorAll(".add-item-button").forEach((button) => {
+        const list = $(button.dataset.target);
+        const template = list?.querySelector(".resume-item")?.cloneNode(true);
+        if (template) itemTemplates.set(button.dataset.target, template);
+        button.addEventListener("click", () => {
+          const clone = cloneResumeItem(list);
+          if (!clone) return;
+          list.appendChild(clone);
+          clone.querySelector("input:not([type='checkbox']), textarea")?.focus();
+          renderPreview();
+          lucide.createIcons();
+        });
+      });
+    }
+
+    function bindRemoveItems() {
+      $("resume").addEventListener("click", (event) => {
+        const button = event.target.closest(".remove-item-button");
+        if (!button) return;
+        button.closest(".resume-item")?.remove();
+        renderPreview();
+      });
+    }
+
+    function createSkillRow(value = "") {
+      const row = document.createElement("div");
+      row.className = "skill-item grid gap-2 sm:grid-cols-[auto_1fr_auto]";
+      row.innerHTML = `
+        <input class="skill-include h-4 w-4 self-center rounded border-slate-300 text-blue-600" type="checkbox" checked aria-label="该行加入简历" />
+        <input class="skill-input field-input" placeholder="补充一行技能、活动或兴趣" />
+        <button class="remove-skill-button icon-button text-red-600" type="button" aria-label="删除该行" title="删除该行">
+          <i data-lucide="trash-2" class="h-4 w-4"></i>
+        </button>
+      `;
+      row.querySelector(".skill-input").value = value;
+      return row;
+    }
+
+    function setSkillFieldValue(id, value) {
+      const input = $(id);
+      if (input) {
+        input.value = value;
+        return;
+      }
+      if (value) $("skillsList")?.appendChild(createSkillRow(value));
+    }
+
+    function bindSkillRows() {
+      $("addSkillButton")?.addEventListener("click", () => {
+        const row = createSkillRow();
+        $("skillsList").appendChild(row);
+        row.querySelector(".skill-input").focus();
+        renderPreview();
+        lucide.createIcons();
+      });
+      $("skillsList")?.addEventListener("click", (event) => {
+        const button = event.target.closest(".remove-skill-button");
+        if (!button) return;
+        button.closest(".skill-item")?.remove();
+        renderPreview();
+      });
+    }
+
+    function collectFamilyRows() {
+      return [...document.querySelectorAll(".family-row")]
+        .map((row) => ({
+          name: row.querySelector(".family-name")?.value.trim() || "",
+          relation: row.querySelector(".family-relation")?.value.trim() || "",
+          position: row.querySelector(".family-position")?.value.trim() || ""
+        }))
+        .filter((row) => row.name || row.relation || row.position);
+    }
+
+    function createFamilyRow() {
+      const row = document.createElement("div");
+      row.className = "family-row grid gap-2 sm:grid-cols-[1fr_1fr_1fr_auto]";
+      row.innerHTML = `
+        <input class="field-input family-name" placeholder="姓名" aria-label="家庭成员姓名" />
+        <input class="field-input family-relation" placeholder="关系" aria-label="家庭成员关系" />
+        <input class="field-input family-position" placeholder="职位" aria-label="家庭成员职位" />
+        <button class="remove-family-row-button icon-button text-red-600" type="button" aria-label="删除该行" title="删除该行">
+          <i data-lucide="trash-2" class="h-4 w-4"></i>
+        </button>
+      `;
+      return row;
+    }
+
+    function bindFamilyInfo() {
+      const toggle = $("familyInfoToggle");
+      const fields = $("familyInfoFields");
+      const rows = $("familyInfoRows");
+      const update = () => fields?.classList.toggle("hidden", !toggle?.checked);
+      toggle?.addEventListener("change", update);
+      $("addFamilyMemberButton")?.addEventListener("click", () => {
+        const row = createFamilyRow();
+        rows.appendChild(row);
+        row.querySelector(".family-name").focus();
+        lucide.createIcons();
+      });
+      rows?.addEventListener("click", (event) => {
+        const button = event.target.closest(".remove-family-row-button");
+        if (!button) return;
+        button.closest(".family-row")?.remove();
+      });
+      update();
+    }
+
+    function bindSmartPaste() {
+      $("smartPasteButton").addEventListener("click", () => {
+        const button = $("smartPasteButton");
+        button.innerHTML = '<i data-lucide="loader-circle" class="h-4 w-4 animate-spin"></i> AI 正在理解...';
+        button.disabled = true;
+        const originalText = $("smartPasteText").value;
+        const sample = originalText.trim();
+        if (!sample) {
+          const status = $("smartPasteStatus");
+          status.className = "mt-3 rounded-[8px] border border-orange-200 bg-orange-50 px-3 py-2 text-xs font-semibold text-orange-800";
+          status.textContent = "请先粘贴完整经历文本。空内容不会触发 AI 理解，也不会自动填入示例数据。";
+          button.innerHTML = '<i data-lucide="scan-text" class="h-4 w-4"></i> 识别并填入字段';
+          button.disabled = false;
+          lucide.createIcons();
+          return;
+        }
+        window.setTimeout(() => {
+          const parsed = parseSmartPaste(sample);
+          $("candidateName").value = parsed.profile.name;
+          $("candidatePhone").value = parsed.profile.phone;
+          $("candidateEmail").value = parsed.profile.email;
+          $("candidateAddress").value = parsed.profile.address;
+          replaceItems("education", parsed.education);
+          replaceItems("experience", parsed.experience);
+          replaceItems("campus", parsed.campus);
+          setSkillFieldValue("skillsTechnical", parsed.skills.technical);
+          setSkillFieldValue("skillsCerts", parsed.skills.certs);
+          if (originalText) $("smartPasteText").value = originalText;
+          flashParsedFields();
+          renderPreview();
+          const status = $("smartPasteStatus");
+          status.className = "mt-3 rounded-[8px] border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700";
+          status.textContent = `AI 已理解并填入：基础信息 4 项、教育 ${parsed.education.length} 段、实习 ${parsed.experience.length} 段、在校活动 ${parsed.campus.length} 段、技能 2 项；缺少的经历卡片已自动新增。`;
+          $("educationList").scrollIntoView({ behavior: "smooth", block: "start" });
+          button.innerHTML = '<i data-lucide="check" class="h-4 w-4"></i> 已填入，可继续修改';
+          button.disabled = false;
+          lucide.createIcons();
+          window.setTimeout(() => {
+            button.innerHTML = '<i data-lucide="scan-text" class="h-4 w-4"></i> 识别并填入字段';
+            lucide.createIcons();
+          }, 1800);
+        }, 260);
+        lucide.createIcons();
+      });
+    }
+
+    function bindExports() {
+      $("exportPdfButton").addEventListener("click", () => {
+        renderPreview();
+        window.print();
+      });
+      $("exportWordButton").addEventListener("click", () => {
+        renderPreview();
+        const page = $("resumePage").cloneNode(true);
+        const styles = [...document.querySelectorAll("style")].map((style) => style.textContent).join("\n");
+        const html = `<!doctype html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <style>
+    @page { size: A4; margin: 0; }
+    body { margin: 0; background: white; }
+    ${styles}
+    .a4-page { width: 210mm !important; min-height: 297mm !important; margin: 0 !important; box-shadow: none !important; border: none !important; }
+  </style>
+</head>
+<body>${page.outerHTML}</body>
+</html>`;
+        const blob = new Blob(["\ufeff", html], { type: "application/msword;charset=utf-8" });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = `${($("candidateName").value || "Beyond-CV").trim()}-简历.doc`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+      });
+    }
+
+    function bindJDUnderstanding() {
+      $("jdAnalyzeButton").addEventListener("click", () => {
+        const button = $("jdAnalyzeButton");
+        const jdText = $("jdPasteText").value.trim();
+        if (!jdText) {
+          const status = $("jdAnalyzeStatus");
+          status.className = "mt-3 rounded-[8px] border border-orange-200 bg-orange-50 px-3 py-2 text-xs font-semibold text-orange-800";
+          status.textContent = "请先粘贴完整 JD。空内容不会触发 AI 理解，也不会自动生成岗位分析。";
+          return;
+        }
+        button.disabled = true;
+        button.innerHTML = '<i data-lucide="loader-circle" class="h-4 w-4 animate-spin"></i> AI 正在理解 JD...';
+        lucide.createIcons();
+        window.setTimeout(() => {
+          const parsed = parseJD(jdText);
+          $("jobRole").textContent = parsed.role;
+          $("jobKeywords").innerHTML = parsed.keywords
+            .map((keyword) => `<span class="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">${escapeHtml(keyword)}</span>`)
+            .join("");
+          generateAllMaterials(parsed);
+          const status = $("jdAnalyzeStatus");
+          status.className = "mt-3 rounded-[8px] border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700";
+          status.textContent = `AI 已理解 JD：识别岗位「${parsed.role}」，提取 ${parsed.keywords.length} 个关键词，并刷新材料生成方向。`;
+          button.disabled = false;
+          button.innerHTML = '<i data-lucide="sparkles" class="h-4 w-4"></i> AI 理解 JD 并生成';
+          lucide.createIcons();
+        }, 260);
+      });
+      document.querySelectorAll(".material-card").forEach((card) => {
+        card.addEventListener("click", () => generateMaterial(card.dataset.material));
+      });
+      $("generateAllMaterialsButton")?.addEventListener("click", () => generateAllMaterials());
+    }
+
+    function getCurrentJDContext() {
+      const jdText = $("jdPasteText").value.trim();
+      if (jdText) return parseJD(jdText);
+      const role = $("jobRole").textContent.trim() || "目标岗位";
+      const keywords = [...$("jobKeywords").querySelectorAll("span")]
+        .map((item) => item.textContent.trim())
+        .filter(Boolean);
+      const safeKeywords = keywords.length ? keywords : ["沟通协作", "数据分析", "项目推进", "问题解决"];
+      return {
+        role,
+        keywords: safeKeywords,
+        focus: safeKeywords.slice(0, 3).join("、")
+      };
+    }
+
+    function realText(value) {
+      const text = String(value || "").trim();
+      if (!text || /\[[^\]]+\]/.test(text) || /^xx$/i.test(text)) return "";
+      return text;
+    }
+
+    function itemSummary(item) {
+      return [realText(item.org), realText(item.role)]
+        .filter(Boolean)
+        .join(" · ");
+    }
+
+    function getMaterialContext(parsed = getCurrentJDContext()) {
+      const education = collectItems("education").map(itemSummary).find(Boolean) || "教育背景";
+      const experience = collectItems("experience").map(itemSummary).find(Boolean) || "一段已勾选经历";
+      const campus = collectItems("campus").map(itemSummary).find(Boolean) || "在校活动";
+      const skills = collectSkillLines(true)
+        .map((line) => realText(line.replace(/：.*/, "")) || realText(line))
+        .filter(Boolean)
+        .slice(0, 3)
+        .join("、") || parsed.focus;
+      return { ...parsed, education, experience, campus, skills };
+    }
+
+    function materialContent(type, context) {
+      const leadKeyword = context.keywords[0] || "岗位匹配";
+      if (type === "shortAnswer") {
+        return `字段短答已生成：可入职时间按实际情况填写；经历摘要突出「${context.experience}」中的${context.focus}；申请动机强调岗位要求与自身经历匹配，并能快速投入真实任务。`;
+      }
+      if (type === "coverLetter") {
+        return `Cover Letter 已生成：我希望申请「${context.role}」。我的${context.education}、${context.experience}和${context.skills}经历，能支撑我围绕${context.focus}快速理解问题、拆解任务并推动结果落地。`;
+      }
+      if (type === "bq") {
+        return `BQ 已生成：1. 团队合作：围绕${context.experience}讲清目标、分工和协作；2. 冲突解决：说明如何用事实和优先级达成共识；3. Why role：结合${leadKeyword}和个人经历回答。`;
+      }
+      return `适配简历建议已生成：优先保留能证明${context.focus}的经历；将「${context.experience}」放在更靠前位置；弱化与「${context.role}」无关或成果不明确的内容。`;
+    }
+
+    function generateMaterial(type, parsed) {
+      const context = getMaterialContext(parsed || getCurrentJDContext());
+      const targetId = {
+        shortAnswer: "materialShortAnswer",
+        coverLetter: "materialCoverLetter",
+        bq: "materialBQ",
+        resumeAdvice: "materialResumeAdvice"
+      }[type];
+      if (!targetId) return;
+      $(targetId).textContent = materialContent(type, context);
+      const card = document.querySelector(`.material-card[data-material="${type}"]`);
+      card?.classList.add("border-blue-300", "bg-blue-50/50");
+      window.setTimeout(() => card?.classList.remove("border-blue-300", "bg-blue-50/50"), 900);
+    }
+
+    function generateAllMaterials(parsed) {
+      ["shortAnswer", "coverLetter", "bq", "resumeAdvice"].forEach((type) => generateMaterial(type, parsed));
+    }
+
+    function parseJD(text) {
+      const source = text.trim();
+      const lines = source.split(/\r?\n|。|；|;/).map((line) => line.trim()).filter(Boolean);
+      const explicitRole = source.match(/(?:岗位名称|职位名称|岗位|职位|Role|Title)[:：]\s*([^，,。；;.\n]+)/i)?.[1]?.trim();
+      const roleLine = lines.find((line) => /(岗位|职位|Role|Title)/i.test(line))
+        || lines.find((line) => /(实习生|经理|助理|专员|顾问|工程师|设计师|管培生|运营|分析师|Intern|Manager|Analyst|Assistant|Specialist|Engineer|Designer|Trainee|Coordinator)/i.test(line))
+        || "";
+      const role = (explicitRole
+        || roleLine.match(/(?:岗位名称|职位名称|岗位|职位|Role|Title)[:：]?\s*([^，,。；;.\n]+)/i)?.[1]
+        || roleLine.match(/[\u4e00-\u9fa5A-Za-z\s/]{2,28}(?:实习生|经理|助理|专员|顾问|工程师|设计师|管培生|运营|分析师|Intern|Manager|Analyst|Assistant|Specialist|Engineer|Designer|Trainee|Coordinator)/i)?.[0]
+        || "目标岗位").trim();
+      const dictionary = [
+        "沟通协作", "数据分析", "项目推进", "问题解决", "需求分析", "用户研究",
+        "商业分析", "跨团队协作", "执行力", "学习能力", "客户沟通", "运营支持"
+      ];
+      const keywords = dictionary.filter((keyword) => source.toLowerCase().includes(keyword.toLowerCase())).slice(0, 8);
+      const safeKeywords = keywords.length ? keywords : ["沟通协作", "数据分析", "项目推进", "问题解决"];
+      return {
+        role,
+        keywords: safeKeywords,
+        focus: safeKeywords.slice(0, 3).join("、")
+      };
+    }
+
+    const RESUME_DOMAIN = {
+      sectionHeadings: [
+        "教育", "教育经历", "学历", "实习", "实习经历", "工作经历", "专业经历", "项目经历",
+        "在校活动", "校园活动", "社团经历", "学生会", "活动经历", "技能", "技能、活动与兴趣",
+        "证书", "语言", "兴趣", "个人信息", "基础信息", "Education", "Internship", "Experience",
+        "Leadership", "Skills", "Profile"
+      ],
+      cities: [
+        "上海", "北京", "深圳", "杭州", "广州", "成都", "南京", "苏州", "武汉", "西安", "天津",
+        "重庆", "宁波", "厦门", "青岛", "远程", "Shanghai", "Beijing", "Shenzhen", "Hangzhou",
+        "Guangzhou", "Chengdu", "Remote"
+      ],
+      schoolSuffixes: ["大学", "学院", "学校", "University", "School", "College"],
+      knownSchools: [
+        "复旦大学", "上海交通大学", "同济大学", "华东师范大学", "上海财经大学", "上海大学",
+        "北京大学", "清华大学", "中国人民大学", "浙江大学", "南京大学", "武汉大学",
+        "中山大学", "厦门大学", "南开大学", "中央财经大学", "对外经济贸易大学",
+        "University of Cambridge", "University of Oxford", "Harvard University", "Stanford University"
+      ],
+      companySuffixes: [
+        "公司", "有限公司", "集团", "研究所", "证券", "咨询", "科技", "银行", "基金", "投资",
+        "资本", "事务所", "部门", "Company", "Inc", "LLC", "Ltd", "Group", "Bank",
+        "Capital", "Securities", "Consulting", "Technology", "Institute", "Department"
+      ],
+      companyKeywords: [
+        "腾讯", "字节", "阿里", "百度", "美团", "京东", "快手", "小红书", "网易", "华为",
+        "华创证券", "招商银行", "中金", "高盛", "摩根", "Microsoft", "Google", "Amazon", "Tencent", "ByteDance"
+      ],
+      campusSuffixes: ["社团", "学生会", "刊物", "协会", "俱乐部", "公益", "Society", "Club", "Association"],
+      degreeTerms: [
+        "博士", "硕士", "本科", "学士", "研究生", "MBA", "PhD", "Master", "Bachelor",
+        "金融硕士", "法学学士", "理学硕士", "工学硕士", "管理学硕士"
+      ],
+      roleTerms: [
+        "产品实习生", "产品经理", "研究员", "分析师", "运营", "增长", "行业研究", "战略",
+        "主编", "负责人", "Intern", "Product Manager", "Analyst", "Researcher", "Editor"
+      ]
+    };
+
+    function escapeRegExp(value) {
+      return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    }
+
+    function domainRegex(terms) {
+      return new RegExp(terms.map(escapeRegExp).join("|"), "i");
+    }
+
+    const SECTION_HEADING_RE = domainRegex(RESUME_DOMAIN.sectionHeadings);
+    const CITY_RE = domainRegex(RESUME_DOMAIN.cities);
+    const SCHOOL_RE = domainRegex(RESUME_DOMAIN.schoolSuffixes);
+    const COMPANY_RE = domainRegex(RESUME_DOMAIN.companySuffixes);
+    const CAMPUS_RE = domainRegex(RESUME_DOMAIN.campusSuffixes);
+    const DEGREE_RE = domainRegex(RESUME_DOMAIN.degreeTerms);
+    const ROLE_RE = domainRegex(RESUME_DOMAIN.roleTerms);
+
+    function hasKnownTerm(text, terms) {
+      const value = String(text || "").toLowerCase();
+      return terms.some((term) => value.includes(String(term).toLowerCase()));
+    }
+
+    function isLikelyCompanyOrg(text) {
+      const value = String(text || "");
+      return COMPANY_RE.test(value) || hasKnownTerm(value, RESUME_DOMAIN.companyKeywords);
+    }
+
+    function isLikelySchoolOrg(text) {
+      const value = String(text || "");
+      if (!value || isLikelyCompanyOrg(value)) return false;
+      return SCHOOL_RE.test(value) || hasKnownTerm(value, RESUME_DOMAIN.knownSchools);
+    }
+
+    function extractSchoolName(text) {
+      const value = String(text || "");
+      const known = RESUME_DOMAIN.knownSchools.find((school) => value.toLowerCase().includes(school.toLowerCase()));
+      if (known) return known;
+      const matches = [
+        value.match(/[\u4e00-\u9fa5A-Za-z·\s]{2,36}(?:大学|University)/i)?.[0],
+        value.match(/[\u4e00-\u9fa5A-Za-z·\s]{2,36}(?:学院|College|School)/i)?.[0]
+      ].filter(Boolean).map((item) => item.trim());
+      return matches.find((item) => !isLikelyCompanyOrg(item)) || "";
+    }
+
+    function extractCompanyName(text) {
+      const value = String(text || "");
+      const known = RESUME_DOMAIN.companyKeywords.find((company) => value.toLowerCase().includes(company.toLowerCase()));
+      const matched = value.match(/[\u4e00-\u9fa5A-Za-z·\s]{2,42}(?:公司|集团|研究所|证券|咨询|科技|银行|基金|投资|资本|事务所|部门|Company|Inc|LLC|Ltd|Group)/i)?.[0]?.trim();
+      return matched || known || "";
+    }
+
+    function parseSmartPaste(text) {
+      const fallback = {
+        profile: {
+          name: "",
+          phone: "",
+          email: "",
+          contact: "",
+          address: ""
+        },
+        education: [],
+        experience: [],
+        campus: [],
+        skills: {
+          technical: "",
+          certs: ""
+        }
+      };
+
+      if (!text) return fallback;
+
+      const modelResult = simulateModelResumeUnderstanding(text, fallback);
+      const { profile, education, experience, campus, skillText } = modelResult;
+
+      return {
+        profile: {
+          name: profile.name,
+          phone: profile.phone,
+          email: profile.email,
+          contact: [profile.phone, profile.email].filter(Boolean).join(" | "),
+          address: profile.address
+        },
+        education: education.length ? education : fallback.education,
+        experience: experience.length ? experience : fallback.experience,
+        campus: campus.length ? campus : fallback.campus,
+        skills: {
+          technical: parseSkillLine(skillText, /(Python|SQL|Tableau|Power BI|Excel|Wind|R|Java|数据|分析|建模|A\/B|Prompt)/i) || fallback.skills.technical,
+          certs: parseSkillLine(skillText, /(证书|资格|CET|雅思|托福|培训|考试|奖学金)/i) || fallback.skills.certs
+        }
+      };
+    }
+
+    function simulateModelResumeUnderstanding(text, fallback) {
+      const normalized = normalizeResumeText(text);
+      const lines = normalized.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+      const phone = normalized.match(/(?:\+?86[\s-]?)?1[3-9]\d{9}/)?.[0] || "";
+      const email = normalized.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0] || "";
+      const name = extractProfileName(lines, normalized, fallback.profile.name);
+      const address = extractProfileAddress(lines, normalized, fallback.profile.address);
+      const sections = splitSmartPasteSections(lines);
+      const education = sanitizeEducationItems(mergeSemanticItems(
+        parseEducationBySchool(lines),
+        parseSectionItems(sections.education, "education")
+      ));
+      const experience = mergeSemanticItems(
+        parseSemanticDateItems(normalized, "experience"),
+        parseSectionItems(sections.experience, "experience")
+      );
+      const campus = mergeSemanticItems(
+        parseSemanticDateItems(normalized, "campus"),
+        parseSectionItems(sections.campus, "campus")
+      );
+      const skillText = sections.skills.join("\n") || normalized;
+
+      return {
+        profile: {
+          name,
+          phone: phone ? `(+86) ${phone.replace(/^(\+?86)?\s*/, "")}` : "",
+          email,
+          contact: [phone ? `(+86) ${phone.replace(/^(\+?86)?\s*/, "")}` : "", email].filter(Boolean).join(" | "),
+          address
+        },
+        education,
+        experience,
+        campus,
+        skillText
+      };
+    }
+
+    function normalizeResumeText(text) {
+      return text
+        .replace(/\r/g, "\n")
+        .replace(/[•●▪·]/g, "\n• ")
+        .replace(/([。；;])\s*/g, "$1\n")
+        .replace(/\s+(教育经历|实习经历|工作经历|项目经历|在校活动|校园活动|技能|证书|Education|Internship|Experience|Leadership|Skills)\s+/gi, "\n$1\n")
+        .replace(/[ \t]{2,}/g, " ")
+        .trim();
+    }
+
+    function extractProfileName(lines, normalized, fallbackName) {
+      const explicit = normalized.match(/(?:姓名|Name)[:：\s]+([\u4e00-\u9fa5]{2,4}|[A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,2})/i)?.[1];
+      if (isLikelyPersonName(explicit)) return explicit.trim();
+
+      const firstSection = lines.findIndex((line) => isSectionHeading(line));
+      const profileLines = lines.slice(0, firstSection > 0 ? firstSection : Math.min(lines.length, 10));
+      for (const line of profileLines) {
+        const direct = line.match(/^([\u4e00-\u9fa5]{2,4})(?:\s|$)/)?.[1] || line.match(/^([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,2})(?:\s|$)/)?.[1];
+        if (isLikelyPersonName(direct)) return direct.trim();
+      }
+
+      return fallbackName;
+    }
+
+    function isLikelyPersonName(value) {
+      const text = (value || "").trim();
+      if (!text || isSectionHeading(text)) return false;
+      if (hasTypedDomainTerm(text)) return false;
+      if (/[\d@|｜:：,，;；/\\]/.test(text)) return false;
+      return /^[\u4e00-\u9fa5]{2,4}$/.test(text) || /^[A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,2}$/.test(text);
+    }
+
+    function extractProfileAddress(lines, normalized, fallbackAddress) {
+      const explicit = normalized.match(/(?:地址|所在地|城市|Location|Address)[:：\s]+([^\n|｜,，;；]{2,24})/i)?.[1];
+      const explicitCity = explicit ? firstMatch(explicit, CITY_RE) : "";
+      if (explicitCity) return explicitCity;
+
+      const firstSection = lines.findIndex((line) => isSectionHeading(line));
+      const profileText = lines.slice(0, firstSection > 0 ? firstSection : Math.min(lines.length, 10)).join(" ");
+      return firstMatch(profileText, CITY_RE) || fallbackAddress;
+    }
+
+    function isSectionHeading(line) {
+      const text = (line || "").trim();
+      if (!text || text.length > 24) return false;
+      return RESUME_DOMAIN.sectionHeadings.some((heading) => text.toLowerCase() === heading.toLowerCase());
+    }
+
+    function hasTypedDomainTerm(text) {
+      return SECTION_HEADING_RE.test(text)
+        || SCHOOL_RE.test(text)
+        || COMPANY_RE.test(text)
+        || CAMPUS_RE.test(text)
+        || DEGREE_RE.test(text)
+        || ROLE_RE.test(text);
+    }
+
+    function parseSemanticDateItems(text, targetType) {
+      const datePattern = /\d{4}[./-]\d{1,2}\s*(?:-|–|—|至|~)\s*(?:\d{4}[./-]\d{1,2}|至今|Present|Now)/gi;
+      const matches = [...text.matchAll(datePattern)];
+      if (!matches.length) return [];
+      const starts = matches.map((match) => {
+        const dateStart = match.index || 0;
+        const before = text.slice(Math.max(0, dateStart - 96), dateStart);
+        const localOrg = findLastOrgStart(before);
+        return {
+          date: match[0],
+          dateStart,
+          start: localOrg >= 0 ? dateStart - before.length + localOrg : Math.max(0, dateStart - 42)
+        };
+      });
+
+      return starts.map((entry, index) => {
+        const end = starts[index + 1]?.start ?? text.length;
+        const block = text.slice(entry.start, end).trim();
+        return parseSemanticBlock(block, entry.date);
+      }).filter((item) => classifyResumeItem(item) === targetType);
+    }
+
+    function parseEducationBySchool(lines) {
+      const items = [];
+      lines.forEach((line, index) => {
+        const school = extractSchoolName(line);
+        if (!school) return;
+        const blockLines = [line];
+        for (let offset = 1; offset <= 5; offset += 1) {
+          const next = lines[index + offset];
+          if (!next || isSectionHeading(next)) break;
+          if (extractSchoolName(next) || isLikelyCompanyOrg(next)) break;
+          blockLines.push(next);
+        }
+        const text = blockLines.join("\n");
+        const date = text.match(/\d{4}[./-]\d{1,2}\s*(?:-|–|—|至|~)\s*(?:\d{4}[./-]\d{1,2}|至今|Present|Now)/i)?.[0] || "";
+        const city = firstMatch(text, CITY_RE) || "";
+        const role = blockLines
+          .map((item) => item.replace(school, "").replace(date, "").replace(city, "").trim())
+          .find((item) => DEGREE_RE.test(item) || /专业|学院|School|College/i.test(item)) || "[学位]｜[专业]";
+        const detail = blockLines
+          .map((item) => item.replace(school, "").replace(date, "").replace(city, "").replace(role, "").trim())
+          .filter(Boolean)
+          .join("\n") || defaultDetail("education");
+        items.push({ org: school, city, role, date, detail });
+      });
+      return items;
+    }
+
+    function sanitizeEducationItems(items) {
+      const seen = new Set();
+      return items
+        .map((item) => ({ ...item, org: extractSchoolName(item.org) || extractSchoolName(`${item.org} ${item.role} ${item.detail}`) }))
+        .filter((item) => item.org && isLikelySchoolOrg(item.org))
+        .filter((item) => {
+          const key = `${item.org}-${item.date}`;
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+    }
+
+    function parseSemanticBlock(block, date) {
+      const city = firstMatch(block, CITY_RE);
+      const org = extractSemanticOrg(block, date, city);
+      const role = extractSemanticRole(block, org, date, city);
+      const detail = removeOnce(removeOnce(removeOnce(removeOnce(block, org), date), city), role)
+        .split(/\n+/)
+        .map((line) => line.trim())
+        .filter((line) => line)
+        .join("\n") || defaultDetail("experience");
+      return { org, city, role, date, detail };
+    }
+
+    function removeOnce(text, value) {
+      if (!value) return text;
+      const index = text.indexOf(value);
+      if (index < 0) return text;
+      return `${text.slice(0, index)}${text.slice(index + value.length)}`;
+    }
+
+    function findLastOrgStart(text) {
+      const orgPattern = typedOrgPattern();
+      let last = -1;
+      for (const match of text.matchAll(orgPattern)) last = match.index || 0;
+      return last;
+    }
+
+    function extractSemanticOrg(block, date, city) {
+      const beforeDate = block.slice(0, Math.max(0, block.indexOf(date)));
+      const orgPattern = typedOrgPattern();
+      const matches = [...beforeDate.matchAll(orgPattern)];
+      return cleanSemanticOrg(matches.at(-1)?.[0] || beforeDate || block.split(/\n/)[0] || "", city);
+    }
+
+    function typedOrgPattern() {
+      const suffixes = [
+        ...RESUME_DOMAIN.schoolSuffixes,
+        ...RESUME_DOMAIN.companySuffixes,
+        ...RESUME_DOMAIN.campusSuffixes,
+        "实验室", "中心", "Lab", "Center"
+      ].map(escapeRegExp).join("|");
+      return new RegExp(`(?:[\\u4e00-\\u9fa50-9「」&（）()·.\\-]{2,42}(?:${suffixes})|[A-Z][A-Za-z0-9&.\\-]*(?:\\s+[A-Z][A-Za-z0-9&.\\-]*){0,5}\\s+(?:${suffixes}))`, "gi");
+    }
+
+    function cleanSemanticOrg(value, city) {
+      const cleaned = value
+        .replace(/^(教育经历|实习经历|工作经历|项目经历|在校活动|校园活动|Education|Internship|Experience|Leadership)\s*/i, "")
+        .replace(city, "")
+        .trim();
+      if (!cleaned || isSectionHeading(cleaned)) return "";
+      const englishOrg = cleaned.match(/[A-Z][A-Za-z0-9&.-]*(?:\s+[A-Z][A-Za-z0-9&.-]*){0,4}\s+(?:University|School|Company|Inc|LLC|Society|Club)$/);
+      if (englishOrg) return englishOrg[0].trim();
+      return cleaned;
+    }
+
+    function extractSemanticRole(block, org, date, city) {
+      const afterDate = block.slice(block.indexOf(date) + date.length).split(/\n+/).map((line) => line.trim()).filter(Boolean);
+      const beforeDate = block.slice(0, Math.max(0, block.indexOf(date))).replace(org, "").replace(city, "").trim();
+      if (DEGREE_RE.test(beforeDate)) return beforeDate;
+      const roleLine = afterDate.find((line) => !/^[-•]/.test(line) && line.length <= 42) || beforeDate;
+      return roleLine || "[职位名称]｜[部门 / 组别]";
+    }
+
+    function classifyResumeItem(item) {
+      const text = `${item.org} ${item.role} ${item.detail}`;
+      if (isLikelyCompanyOrg(item.org)) return "experience";
+      if (isLikelySchoolOrg(item.org)) return "education";
+      if (CAMPUS_RE.test(item.org) || /(比赛|公益|主编|组织|Leadership|Editor)/i.test(text)) return "campus";
+      if (DEGREE_RE.test(item.role) && !ROLE_RE.test(text)) return "education";
+      if (/(课程|GPA|奖学金|毕业)/i.test(text) && !isLikelyCompanyOrg(text)) return "education";
+      return "experience";
+    }
+
+    function mergeSemanticItems(primary, fallbackItems) {
+      const merged = [...primary];
+      fallbackItems.forEach((item) => {
+        const key = `${item.org}-${item.date}`;
+        if (!merged.some((existing) => `${existing.org}-${existing.date}` === key)) merged.push(item);
+      });
+      return merged;
+    }
+
+    function splitSmartPasteSections(lines) {
+      const sections = { education: [], experience: [], campus: [], skills: [] };
+      let current = "";
+      lines.forEach((line) => {
+        const titleLike = line.length <= 18;
+        if (titleLike && /^(教育|教育经历|学历|Education)$/i.test(line)) {
+          current = "education";
+          return;
+        }
+        if (titleLike && /^(实习|实习经历|工作经历|专业经历|项目经历|Experience|Internship)$/i.test(line)) {
+          current = "experience";
+          return;
+        }
+        if (titleLike && /^(在校活动|校园活动|社团经历|学生会|活动经历|Leadership)$/i.test(line)) {
+          current = "campus";
+          return;
+        }
+        if (titleLike && /^(技能|技能、活动与兴趣|证书|语言|兴趣|Skills)$/i.test(line)) {
+          current = "skills";
+          return;
+        }
+        if (current) sections[current].push(line);
+      });
+      return sections;
+    }
+
+    function parseSectionItems(lines, type) {
+      const expanded = expandInlineDateItems(lines, type);
+      const chunks = [];
+      let current = [];
+      expanded.forEach((line) => {
+        const startsNew = looksLikeItemStart(line, type) && current.length;
+        if (startsNew) {
+          chunks.push(current);
+          current = [];
+        }
+        current.push(line);
+      });
+      if (current.length) chunks.push(current);
+      return chunks.map((chunk) => parseChunk(chunk, type)).filter((item) => item.org || item.role || item.detail);
+    }
+
+    function expandInlineDateItems(lines, type) {
+      if (type !== "experience") return lines;
+      const expanded = [];
+      const itemStart = new RegExp(`${RESUME_DOMAIN.companySuffixes.map(escapeRegExp).join("|")}|字节|腾讯|阿里|美团|小红书`, "i");
+      lines.forEach((line) => {
+        const dateStarts = [...line.matchAll(/\S.{0,38}?\d{4}[./-]\d{1,2}\s*(?:-|–|—|至|~)\s*(?:\d{4}[./-]\d{1,2}|至今|Present|Now)/gi)]
+          .map((match) => match.index || 0)
+          .filter((index) => index > 0 && itemStart.test(line.slice(index, index + 48)));
+        if (!dateStarts.length) {
+          expanded.push(line);
+          return;
+        }
+        let cursor = 0;
+        dateStarts.forEach((index) => {
+          const prev = line.slice(cursor, index).trim();
+          if (prev) expanded.push(prev);
+          cursor = index;
+        });
+        const tail = line.slice(cursor).trim();
+        if (tail) expanded.push(tail);
+      });
+      return expanded;
+    }
+
+    function looksLikeItemStart(line, type) {
+      const hasDate = /\d{4}[./-]\d{1,2}/.test(line);
+      if (isSectionHeading(line)) return false;
+      if (type === "education") return SCHOOL_RE.test(line) || (hasDate && DEGREE_RE.test(line));
+      if (type === "campus") return CAMPUS_RE.test(line) || /(比赛|公益|组织|Club|Society)/i.test(line);
+      return COMPANY_RE.test(line) || /(字节|腾讯|阿里|美团|小红书)/i.test(line) || (hasDate && ROLE_RE.test(line));
+    }
+
+    function parseChunk(chunk, type) {
+      const text = chunk.join("\n");
+      const date = text.match(/\d{4}[./-]\d{1,2}\s*(?:-|–|—|至|~)\s*(?:\d{4}[./-]\d{1,2}|至今|Present|Now)/i)?.[0] || "";
+      const city = firstMatch(text, CITY_RE) || "";
+      const orgLine = chunk.find((line) => looksLikeItemStart(line, type)) || chunk[0] || "";
+      const roleLine = chunk.find((line) => line !== orgLine && !isSectionHeading(line) && !/\d{4}[./-]\d{1,2}/.test(line) && !/^[-•]/.test(line)) || "";
+      const org = cleanOrg(orgLine, date, city, type);
+      const role = cleanRole(roleLine || orgLine, org, date, city, type);
+      const detailLines = chunk
+        .filter((line) => line !== orgLine && line !== roleLine)
+        .map((line) => line.replace(date, "").replace(city, "").trim())
+        .filter(Boolean);
+      return {
+        org,
+        city,
+        role,
+        date,
+        detail: detailLines.length ? detailLines.join("\n") : defaultDetail(type)
+      };
+    }
+
+    function cleanOrg(line, date, city, type) {
+      const cleaned = line.replace(date, "").replace(city, "").replace(/[|｜].*$/, "").trim();
+      if (isSectionHeading(cleaned)) return "";
+      if (type === "education") return extractSchoolName(cleaned);
+      if (type === "campus") return cleaned || "在校活动";
+      return extractCompanyName(cleaned) || cleaned;
+    }
+
+    function cleanRole(line, org, date, city, type) {
+      const cleaned = line.replace(org, "").replace(date, "").replace(city, "").replace(/^[|｜,，\s]+/, "").trim();
+      if (cleaned && !isSectionHeading(cleaned)) return cleaned;
+      if (type === "education") return "[学位]｜[专业]";
+      if (type === "campus") return "[职位 / 角色]";
+      return "[职位名称]｜[部门 / 组别]";
+    }
+
+    function defaultDetail(type) {
+      if (type === "education") return "GPA：[xx] / 4.0；荣誉：[xx]；相关课程：[经济学 / 会计 / 金融 / 商业分析等课程]";
+      if (type === "campus") return "• 组织活动并协调成员完成项目\n• 沉淀流程并提升协作效率";
+      return "• 负责需求拆解、资料整理和跨团队沟通\n• 输出方案并推动关键任务落地";
+    }
+
+    function parseSkillLine(text, pattern) {
+      const line = text.split(/\r?\n/).find((item) => pattern.test(item));
+      if (!line) return "";
+      return line.includes("：") || line.includes(":") ? line : `技术技能：${line}`;
+    }
+
+    function firstMatch(text, pattern) {
+      return text.match(pattern)?.[0] || "";
+    }
+
+    function replaceItems(type, items) {
+      items.forEach((item, index) => fillNth(type, index, item));
+      document.querySelectorAll(`.resume-item[data-type="${type}"]`).forEach((item, index) => {
+        item.querySelector(".include-check").checked = index < items.length;
+      });
+    }
+
+    function flashParsedFields() {
+      const targets = [
+        "candidateName",
+        "candidatePhone",
+        "candidateEmail",
+        "candidateAddress",
+        "educationList",
+        "experienceList",
+        "campusList"
+      ];
+      targets.forEach((id) => {
+        const el = $(id);
+        if (!el) return;
+        el.classList.remove("parse-flash");
+        void el.offsetWidth;
+        el.classList.add("parse-flash");
+      });
+    }
+
+    function fillFirst(type, data) {
+      fillNth(type, 0, data);
+    }
+
+    function fillNth(type, index, data) {
+      const item = ensureItem(type, index);
+      if (!item) return;
+      const orgField = item.querySelector(".item-school, .item-company");
+      if (orgField) orgField.value = data.org;
+      item.querySelector(".item-city").value = data.city;
+      const roleField = item.querySelector(".item-degree, .item-role");
+      if (roleField) roleField.value = data.role;
+      item.querySelector(".item-date").value = data.date;
+      item.querySelector(".item-detail").value = data.detail;
+      item.querySelector(".include-check").checked = true;
+    }
+
+    function ensureItem(type, index) {
+      const listId = {
+        education: "educationList",
+        experience: "experienceList",
+        campus: "campusList"
+      }[type];
+      const list = $(listId);
+      if (!list) return null;
+      while (list.querySelectorAll(`.resume-item[data-type="${type}"]`).length <= index) {
+        const template = itemTemplates.get(listId) || list.querySelector(".resume-item");
+        if (!template) return null;
+        const clone = template.cloneNode(true);
+        resetResumeItem(clone);
+        list.appendChild(clone);
+      }
+      return list.querySelectorAll(`.resume-item[data-type="${type}"]`)[index];
+    }
+
+    function bindPlugin() {
+      window.addEventListener("message", (event) => {
+        if (event.source !== window) return;
+        if (event.data?.source === "beyond-cv-extension" && event.data?.type === "READY") {
+          state.pluginConnected = true;
+          renderPluginState();
+        }
+      });
+
+      $("fillTestButton").addEventListener("click", () => {
+        $("testName").value = state.lang === "zh" ? "候选人姓名" : "Candidate Name";
+        $("testMotivation").value = "我希望申请该岗位，是因为它与我的经历、能力和职业方向匹配。我会结合过往项目经验，快速理解问题、拆解任务并推动落地。";
+        $("testFillStatus").className = "rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700";
+        $("testFillStatus").textContent = "2 个字段已填入";
+      });
+      $("syncResumeButton").addEventListener("click", syncResumeToCloud);
+      $("saveResumeButton").addEventListener("click", () => syncResumeToCloud({ requireAccount: true }));
+      $("copySyncTokenButton").addEventListener("click", copySyncToken);
+      $("createAccountButton").addEventListener("click", createAccount);
+      $("loginAccountButton").addEventListener("click", loginAccount);
+      $("logoutAccountButton").addEventListener("click", logoutAccount);
+      refreshCloudSyncBox();
+      refreshAccountState();
+      renderPluginState();
+    }
+
+    function renderPluginState() {
+      const pluginStatusTitle = $("pluginStatusTitle");
+      const pluginStatusText = $("pluginStatusText");
+      if (state.pluginConnected) {
+        if (pluginStatusTitle) pluginStatusTitle.textContent = "Chrome 插件已在当前页面注入";
+        if (pluginStatusText) pluginStatusText.textContent = "可打开招聘官网扫描字段，确认后填入，不会自动提交申请。";
+        $("extensionMainStatus").textContent = "当前页面检测到插件";
+        $("extensionSubStatus").textContent = "扩展已加载 content script；在招聘网站打开工具栏图标即可扫描表单。";
+        $("topPluginBadge").innerHTML = '<span class="status-dot"></span> 插件已检测';
+        $("downloadExtensionButton").innerHTML = '<i data-lucide="download" class="h-4 w-4"></i> 重新下载 ZIP';
+        $("extensionStatusIcon").className = "grid h-14 w-14 place-items-center rounded-[12px] bg-emerald-50 text-emerald-600";
+        $("extensionStatusIcon").innerHTML = '<i data-lucide="badge-check" class="h-6 w-6"></i>';
+      } else {
+        if (pluginStatusTitle) pluginStatusTitle.textContent = "Chrome 插件包已就绪";
+        if (pluginStatusText) pluginStatusText.textContent = "下载 ZIP 后加载到 Chrome，可在招聘官网扫描字段，不会自动提交申请。";
+        $("extensionMainStatus").textContent = "开发版插件包已就绪";
+        $("extensionSubStatus").textContent = "文件名：beyond-cv-extension.zip。解压后在 Chrome 扩展页加载文件夹即可使用。";
+        $("topPluginBadge").innerHTML = '<span class="status-dot pending"></span> 插件可下载';
+        $("downloadExtensionButton").innerHTML = '<i data-lucide="download" class="h-4 w-4"></i> 下载插件 ZIP';
+        $("extensionStatusIcon").className = "grid h-14 w-14 place-items-center rounded-[12px] bg-orange-50 text-orange-600";
+        $("extensionStatusIcon").innerHTML = '<i data-lucide="plug" class="h-6 w-6"></i>';
+      }
+      lucide.createIcons();
+    }
+
+    function bindPolish() {
+      $("polishButton").addEventListener("click", () => {
+        document.querySelectorAll(".item-detail").forEach((field) => {
+          field.value = field.value
+            .replace("负责产品需求建立", "负责产品需求拆解与落地")
+            .replace("通过竞品分析、用户访谈和数据梳理", "结合竞品分析、用户访谈和数据梳理")
+            .replace("支持行业比较和投资判断", "支持行业比较与投资判断");
+        });
+        renderPreview();
+      });
+    }
+
+    function bindNavActive() {
+      const links = Array.from(document.querySelectorAll(".nav-link"));
+      const sections = links.map((link) => document.querySelector(link.getAttribute("href")));
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            links.forEach((link) => link.classList.toggle("active", link.getAttribute("href") === `#${entry.target.id}`));
+          }
+        });
+      }, { rootMargin: "-35% 0px -55% 0px", threshold: 0 });
+      sections.forEach((section) => section && observer.observe(section));
+    }
+
+    function bindSwitches() {
+      document.querySelectorAll(".switch").forEach((switchEl) => {
+        switchEl.addEventListener("click", () => {
+          switchEl.classList.toggle("on");
+        });
+      });
+    }
+
+    function arrangeDashboardModules() {
+      const dashboard = $("dashboard");
+      const resume = $("resume");
+      if (!dashboard || !resume || $("dashboardSupport")) return;
+      const bannerRow = dashboard.firstElementChild;
+      const support = document.createElement("section");
+      support.id = "dashboardSupport";
+      support.className = "scroll-mt-24 space-y-4";
+      const pluginColumn = bannerRow?.children?.[1];
+      if (pluginColumn) support.appendChild(pluginColumn);
+      while (dashboard.children.length > 1) {
+        support.appendChild(dashboard.children[1]);
+      }
+      if (bannerRow) bannerRow.className = "grid gap-4";
+      resume.insertAdjacentElement("afterend", support);
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      arrangeDashboardModules();
+      bindEditor();
+      bindAddItems();
+      bindRemoveItems();
+      bindSkillRows();
+      bindFamilyInfo();
+      bindSmartPaste();
+      bindExports();
+      bindJDUnderstanding();
+      bindPlugin();
+      bindPolish();
+      bindNavActive();
+      bindSwitches();
+      $("langZh").addEventListener("click", () => setLanguage("zh"));
+      $("langEn").addEventListener("click", () => setLanguage("en"));
+      renderPreview();
+      lucide.createIcons();
+    });
+  </script>
+</body>
+</html>

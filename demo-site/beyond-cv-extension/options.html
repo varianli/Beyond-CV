@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Beyond CV 设置</title>
+  <link rel="stylesheet" href="options.css" />
+</head>
+<body>
+  <main class="settings">
+    <header>
+      <p>Beyond CV</p>
+      <h1>本地填表资料</h1>
+    </header>
+
+    <form id="profileForm" class="form">
+      <label>姓名<input name="name" /></label>
+      <label>姓<input name="lastName" /></label>
+      <label>名<input name="firstName" /></label>
+      <label>邮箱<input name="email" /></label>
+      <label>电话<input name="phone" /></label>
+      <label>城市<input name="city" /></label>
+      <label>地址<input name="address" /></label>
+      <label>学校<input name="school" /></label>
+      <label>学历类型<input name="educationType" /></label>
+      <label>学历<input name="educationLevel" /></label>
+      <label>教育开始时间<input name="educationStart" /></label>
+      <label>教育结束时间<input name="educationEnd" /></label>
+      <label>学位<input name="degree" /></label>
+      <label>学院<input name="college" /></label>
+      <label>专业<input name="major" /></label>
+      <label>毕业时间<input name="graduation" /></label>
+      <label>实验室<input name="lab" /></label>
+      <label>研究方向<input name="researchArea" /></label>
+      <label>导师<input name="advisor" /></label>
+      <label class="wide">技能<textarea name="skills"></textarea></label>
+      <label class="wide">经历摘要<textarea name="summary"></textarea></label>
+      <label class="wide">申请动机<textarea name="motivation"></textarea></label>
+      <div class="actions">
+        <button type="submit">保存资料</button>
+        <span id="saveStatus"></span>
+      </div>
+    </form>
+  </main>
+  <script src="options.js"></script>
+</body>
+</html>

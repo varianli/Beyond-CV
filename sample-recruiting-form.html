@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>招聘网站表单测试页</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      color: #0f172a;
+      background: #f8fafc;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Microsoft YaHei", sans-serif;
+    }
+
+    main {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 40px 20px;
+    }
+
+    form {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 20px;
+      background: #fff;
+      box-shadow: 0 18px 40px rgba(15, 23, 42, 0.07);
+    }
+
+    h1 {
+      margin: 0 0 18px;
+    }
+
+    label {
+      display: grid;
+      gap: 6px;
+      color: #64748b;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    input,
+    textarea {
+      width: 100%;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      padding: 10px 11px;
+      color: #0f172a;
+      font: inherit;
+    }
+
+    textarea {
+      min-height: 96px;
+      resize: vertical;
+    }
+
+    .wide {
+      grid-column: 1 / -1;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>招聘网站表单测试页</h1>
+    <form>
+      <label>姓名<input name="candidate_name" placeholder="请输入姓名" /></label>
+      <label>邮箱<input name="email" placeholder="name@example.com" /></label>
+      <label>联系电话<input name="phone" /></label>
+      <label>所在地<input name="location" /></label>
+      <label>学校<input name="school" /></label>
+      <label>专业<input name="major" /></label>
+      <label class="wide">技能<textarea name="skills"></textarea></label>
+      <label class="wide">为什么申请这个岗位？<textarea name="motivation"></textarea></label>
+      <label class="wide">身份证号<input name="id_number" /></label>
+    </form>
+  </main>
+</body>
+</html>
