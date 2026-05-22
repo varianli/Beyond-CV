@@ -2461,6 +2461,13 @@ ${trimForAi(jdText, 9000)}
       lucide.createIcons();
     }
 
+    function updateMaterialPreview(type, content) {
+      const modal = $("materialPreviewModal");
+      if (!modal || modal.classList.contains("hidden")) return;
+      $("materialPreviewTitle").textContent = materialTitle(type);
+      $("materialPreviewContent").textContent = content || "暂无内容。";
+    }
+
     function closeMaterialPreview() {
       const modal = $("materialPreviewModal");
       if (!modal) return;
@@ -2640,7 +2647,8 @@ ${JSON.stringify(resumeFactsForAi(), null, 2)}
         openMaterialPreview(type);
         return;
       }
-      await generateMaterial(type, undefined, { openPreview: true });
+      openMaterialPreview(type, `${materialTitle(type)}生成中...`);
+      await generateMaterial(type, undefined, { updatePreview: true });
     }
 
     async function generateMaterial(type, parsed, options = {}) {
@@ -2651,9 +2659,11 @@ ${JSON.stringify(resumeFactsForAi(), null, 2)}
         const content = materials[type] || "AI 未返回可用内容，请补充 JD 或候选人事实后重试。";
         renderMaterial(type, content);
         if (options.openPreview) openMaterialPreview(type, content);
+        if (options.updatePreview) updateMaterialPreview(type, content);
       } catch (error) {
         renderMaterial(type, error.message);
         if (options.openPreview) openMaterialPreview(type, error.message);
+        if (options.updatePreview) updateMaterialPreview(type, error.message);
       } finally {
         lucide.createIcons();
       }
