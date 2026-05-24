@@ -302,9 +302,104 @@ function trimForAi(value, limit = 6000) {
   return text.length > limit ? `${text.slice(0, limit)}\n...[已截断]` : text;
 }
 
+function addFact(facts, id, slot, label, value, source = "profile") {
+  const text = String(value || "").trim();
+  if (!text || /^\[[^\]]+\]$/.test(text) || /^xx$/i.test(text)) return;
+  if (facts.some((fact) => fact.id === id || (fact.slot === slot && fact.value === text))) return;
+  facts.push({ id, slot, label, value: text, source });
+}
+
+function splitPhoneFacts(phone) {
+  const raw = String(phone || "").trim();
+  const digits = raw.replace(/[^\d+]/g, "");
+  const body = digits.replace(/^\+?86/, "");
+  return {
+    countryCode: raw || body ? "+86" : "",
+    number: body || raw
+  };
+}
+
+function inferEducationLevel(text) {
+  const value = String(text || "");
+  if (/博士|PhD|Doctor/i.test(value)) return "博士";
+  if (/硕士|研究生|Master/i.test(value)) return "硕士";
+  if (/本科|学士|Bachelor/i.test(value)) return "本科";
+  if (/大专|专科|Associate/i.test(value)) return "大专";
+  return "";
+}
+
+function itemText(item = {}) {
+  return [item.org, item.role, item.city, item.date, item.detail].filter(Boolean).join(" | ");
+}
+
+function buildCandidateFacts(profileData = {}) {
+  const knowledgeBase = profileData.knowledgeBase || {};
+  const kbProfile = knowledgeBase.profile || {};
+  const facts = [];
+  const name = profileData.name || kbProfile.name || "";
+  const phone = profileData.phone || kbProfile.phone || "";
+  const phoneParts = splitPhoneFacts(phone);
+
+  addFact(facts, "profile.name", "name", "姓名", name);
+  if (name.length > 1) {
+    addFact(facts, "profile.lastName", "lastName", "姓", profileData.lastName || name.slice(0, 1));
+    addFact(facts, "profile.firstName", "firstName", "名", profileData.firstName || name.slice(1));
+  }
+  addFact(facts, "profile.email", "email", "邮箱", profileData.email || kbProfile.email);
+  addFact(facts, "profile.phoneCountryCode", "phoneCountryCode", "手机国家区号", phoneParts.countryCode);
+  addFact(facts, "profile.phoneNumber", "phoneNumber", "手机号主体", phoneParts.number);
+  addFact(facts, "profile.cityPreference", "cityPreference", "期望/当前城市", profileData.city || profileData.address || kbProfile.address);
+  addFact(facts, "profile.address", "address", "地址", profileData.address || kbProfile.address);
+
+  const education = Array.isArray(knowledgeBase.education) ? knowledgeBase.education : [];
+  const primaryEducation = education.find((item) => item.included) || education[0] || {};
+  addFact(facts, "education.0.school", "school", "学校名称", profileData.school || primaryEducation.org, "education");
+  addFact(facts, "education.0.degree", "degree", "学位", profileData.degree || primaryEducation.role, "education");
+  addFact(facts, "education.0.educationLevel", "educationLevel", "学历", profileData.educationLevel || inferEducationLevel(primaryEducation.role), "education");
+  addFact(facts, "education.0.college", "college", "学院", profileData.college, "education");
+  addFact(facts, "education.0.major", "major", "专业", profileData.major, "education");
+  addFact(facts, "education.0.start", "educationStart", "教育开始时间", profileData.educationStart, "education");
+  addFact(facts, "education.0.end", "educationEnd", "教育结束时间", profileData.educationEnd || profileData.graduation, "education");
+  education.slice(0, 8).forEach((item, index) => {
+    addFact(facts, `education.${index}.school`, "school", `学校 ${index + 1}`, item.org, "education");
+    addFact(facts, `education.${index}.degree`, "degree", `学历/学位 ${index + 1}`, item.role, "education");
+    addFact(facts, `education.${index}.date`, "educationDate", `教育时间 ${index + 1}`, item.date, "education");
+    addFact(facts, `education.${index}.summary`, "educationSummary", `教育经历 ${index + 1}`, itemText(item), "education");
+  });
+
+  const experience = Array.isArray(knowledgeBase.experience) ? knowledgeBase.experience : [];
+  experience.slice(0, 12).forEach((item, index) => {
+    addFact(facts, `experience.${index}.company`, "company", `公司 ${index + 1}`, item.org, "experience");
+    addFact(facts, `experience.${index}.role`, "role", `岗位 ${index + 1}`, item.role, "experience");
+    addFact(facts, `experience.${index}.date`, "experienceDate", `工作时间 ${index + 1}`, item.date, "experience");
+    addFact(facts, `experience.${index}.summary`, "summary", `工作经历 ${index + 1}`, itemText(item), "experience");
+  });
+
+  const campus = Array.isArray(knowledgeBase.campus) ? knowledgeBase.campus : [];
+  campus.slice(0, 8).forEach((item, index) => {
+    addFact(facts, `campus.${index}.summary`, "summary", `校园/项目经历 ${index + 1}`, itemText(item), "campus");
+  });
+
+  const skills = knowledgeBase.skills || {};
+  const skillLines = [
+    ...(Array.isArray(skills.selected) ? skills.selected : []),
+    ...(Array.isArray(skills.all) ? skills.all : []),
+    profileData.skills,
+    skills.technical,
+    skills.certs,
+    skills.languages,
+    skills.activities,
+    skills.interests
+  ].filter(Boolean);
+  addFact(facts, "profile.skills", "skills", "技能", [...new Set(skillLines)].join("\n"));
+  return facts;
+}
+
 function profileForAi(profileData = {}) {
   const knowledgeBase = profileData.knowledgeBase || {};
+  const facts = buildCandidateFacts(profileData);
   return {
+    facts,
     profile: {
       name: profileData.name || knowledgeBase.profile?.name || "",
       firstName: profileData.firstName || "",
@@ -382,9 +477,10 @@ JSON 结构：
   "fields": [
     {
       "id": "页面字段 id",
-      "key": "name|phone|email|city|school|educationLevel|degree|major|college|educationStart|educationEnd|skills|summary|motivation|custom|skip",
+      "slot": "name|phoneCountryCode|phoneNumber|email|cityPreference|school|educationLevel|degree|major|college|educationStart|educationEnd|skills|summary|motivation|custom|skip",
+      "factId": "必须引用资料库 facts 里的 id；不能填写则为空",
       "label": "给用户看的中文字段名",
-      "value": "准备填写的真实值，不能填则为空字符串",
+      "value": "可选；必须与 factId 对应事实一致，不能填则为空字符串",
       "confidence": 0.0,
       "blocked": false,
       "sensitive": false,
@@ -396,7 +492,7 @@ JSON 结构：
 页面字段模型：
 ${trimForAi(pageModelForAi(model), 12000)}
 
-资料库：
+资料库和可引用 facts：
 ${trimForAi(profileForAi(profileData), 14000)}
 `;
 }
@@ -406,28 +502,199 @@ function isSensitiveAiField(field) {
   return /password|captcha|verification|id\s*number|passport|salary|compensation|privacy|terms|consent|agree|身份证|护照|证件|验证码|密码|薪资|政治|宗教|婚育|婚姻|隐私|协议|同意/.test(text);
 }
 
-function normalizeAiScanResult(result, model) {
+function normalizeSlot(slot) {
+  const value = String(slot || "").trim();
+  const aliases = {
+    phone: "phoneNumber",
+    mobile: "phoneNumber",
+    phoneNumber: "phoneNumber",
+    telephone: "phoneNumber",
+    phoneCountryCode: "phoneCountryCode",
+    countryCode: "phoneCountryCode",
+    email: "email",
+    mail: "email",
+    city: "cityPreference",
+    location: "cityPreference",
+    workLocation: "cityPreference",
+    expectedLocation: "cityPreference",
+    school: "school",
+    university: "school",
+    education: "educationLevel",
+    educationLevel: "educationLevel",
+    degree: "degree",
+    major: "major",
+    college: "college",
+    department: "college",
+    educationStart: "educationStart",
+    educationEnd: "educationEnd",
+    graduation: "educationEnd",
+    skills: "skills",
+    summary: "summary",
+    motivation: "motivation",
+    name: "name",
+    firstName: "firstName",
+    lastName: "lastName"
+  };
+  return aliases[value] || value;
+}
+
+function fieldStrongText(field) {
+  return [
+    field.label,
+    field.placeholder,
+    field.name,
+    field.domId,
+    field.ariaLabel
+  ].filter(Boolean).join(" ");
+}
+
+function validationText(field) {
+  return [
+    field.section,
+    fieldStrongText(field),
+    field.labelText,
+    field.containerText
+  ].filter(Boolean).join(" ");
+}
+
+function hasFieldSignal(text) {
+  return /手机|电话|邮箱|电子邮件|姓名|真实姓名|中文名|工作地点|期望地点|期望工作地|城市|地点|学校|院校|大学|毕业院校|学历|最高学历|学位|学院|院系|专业|入学|开始|起始|毕业|结束|终止|技能|能力|经历|介绍|总结|开放题|问题|动机|优势|mobile|phone|tel|email|e-mail|mail|name|location|city|school|university|education|degree|department|faculty|college|major|start|from|end|to|graduat|skills|summary|motivation|question/i.test(String(text || ""));
+}
+
+function expectedSlotsForField(field) {
+  const strongText = fieldStrongText(field);
+  const broadText = validationText(field);
+  const text = hasFieldSignal(strongText) ? strongText : broadText;
+  if (/密码|验证码|证件|身份证|护照|薪资|隐私|协议|同意|password|captcha|passport|salary|privacy|terms|agree/i.test(broadText)) return ["blocked"];
+  if (field.inputRole === "phone_country_code") return ["phoneCountryCode"];
+  if (field.inputRole === "phone_number") return ["phoneNumber"];
+  if (field.controlCount > 1 && (/手机|电话|mobile|phone|tel/i.test(text) || /手机|电话|mobile|phone|tel/i.test(broadText))) {
+    return Number(field.controlIndex) === 0 ? ["phoneCountryCode"] : ["phoneNumber"];
+  }
+  if (/手机|电话|mobile|phone|tel/i.test(text)) return ["phoneNumber", "phoneCountryCode"];
+  if (/邮箱|电子邮件|email|e-mail|mail/i.test(text)) return ["email"];
+  if (/姓名|真实姓名|中文名|name/i.test(text) && !/公司|学校|联系人|紧急/i.test(text)) return ["name"];
+  if (/工作地点|期望地点|期望工作地|城市|地点|location|city/i.test(text)) return ["cityPreference"];
+  if (/学校|院校|大学|毕业院校|school|university/i.test(text)) return ["school"];
+  if (/学历|最高学历|education level/i.test(text) && !/学历类型|培养方式/i.test(text)) return ["educationLevel"];
+  if (/学位|degree/i.test(text)) return ["degree"];
+  if (/学院|院系|department|faculty|college/i.test(text)) return ["college"];
+  if (/专业|major/i.test(text)) return ["major"];
+  if (/入学|开始|起始|start|from/i.test(text) && /教育|学校|学历|education/i.test(text)) return ["educationStart"];
+  if (/毕业|结束|终止|end|to|graduat/i.test(text) && /教育|学校|学历|education/i.test(text)) return ["educationEnd"];
+  if (/技能|能力|skills|tool/i.test(text)) return ["skills"];
+  if (/经历|介绍|总结|开放题|问题|动机|优势|summary|motivation|question/i.test(text)) return ["summary", "motivation"];
+  return [];
+}
+
+function optionMatch(options = [], value) {
+  const normalized = String(value || "").trim().toLowerCase();
+  if (!normalized || !options.length) return value;
+  const match = options.find((option) => {
+    const text = String(option || "").trim().toLowerCase();
+    return text === normalized || text.includes(normalized) || normalized.includes(text);
+  });
+  return match || "";
+}
+
+function normalizeValidatedValue(slot, value, field) {
+  const text = String(value || "").trim();
+  if (!text) return "";
+  if (slot === "phoneNumber") {
+    const body = text.replace(/[^\d+]/g, "").replace(/^\+?86/, "");
+    return /^1[3-9]\d{9}$/.test(body) ? body : "";
+  }
+  if (slot === "phoneCountryCode") {
+    if (/^\+?86$/.test(text) || String(field.currentValue || "").includes("+86")) return "+86";
+    return "";
+  }
+  if (slot === "email") return /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(text) ? text : "";
+  if (slot === "cityPreference") {
+    if (/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(text) || /^1[3-9]\d{9}$/.test(text)) return "";
+    return optionMatch(field.options, text) || (!field.options?.length ? text : "");
+  }
+  if (field.options?.length && (field.tag === "select" || field.inputRole === "choice")) {
+    return optionMatch(field.options, text);
+  }
+  return text;
+}
+
+function validateAiAssignment(item, base, factsById, factsBySlot) {
+  const requestedSlot = normalizeSlot(item.slot || item.key);
+  if (!requestedSlot || requestedSlot === "skip") {
+    return { slot: "", value: "", blocked: false, canFill: false, reason: item.reason || "AI 选择跳过" };
+  }
+  if (isSensitiveAiField(item)) {
+    return { slot: requestedSlot, value: "", blocked: true, canFill: false, reason: "敏感或协议类字段，已阻止自动填写" };
+  }
+  const expectedSlots = expectedSlotsForField(base);
+  if (expectedSlots.includes("blocked")) {
+    return { slot: requestedSlot, value: "", blocked: true, canFill: false, reason: "本地规则判定为敏感字段" };
+  }
+  if (expectedSlots.length && !expectedSlots.includes(requestedSlot)) {
+    return {
+      slot: requestedSlot,
+      value: "",
+      blocked: false,
+      canFill: false,
+      reason: `本地校验拒绝：该字段期望 ${expectedSlots.join("/")}，AI 返回 ${requestedSlot}`
+    };
+  }
+  let fact = factsById.get(String(item.factId || ""));
+  if (!fact && item.value) {
+    fact = (factsBySlot.get(requestedSlot) || []).find((candidate) => candidate.value === String(item.value).trim());
+  }
+  if (fact && normalizeSlot(fact.slot) !== requestedSlot) {
+    return {
+      slot: requestedSlot,
+      value: "",
+      blocked: false,
+      canFill: false,
+      reason: `本地校验拒绝：fact ${fact.id} 属于 ${fact.slot}，不能填入 ${requestedSlot}`
+    };
+  }
+  if (!fact && !["phoneCountryCode"].includes(requestedSlot)) {
+    return { slot: requestedSlot, value: "", blocked: false, canFill: false, reason: "AI 未引用资料库 factId，已拒绝" };
+  }
+  const factValue = fact?.value || item.value || "";
+  const value = normalizeValidatedValue(requestedSlot, factValue, base);
+  if (!value) {
+    return { slot: requestedSlot, value: "", blocked: false, canFill: false, reason: "本地格式/选项校验未通过" };
+  }
+  if (requestedSlot === "phoneCountryCode" && String(base.currentValue || "").includes(value)) {
+    return { slot: requestedSlot, value: "", blocked: false, canFill: false, reason: "国家区号已存在，无需填写" };
+  }
+  return { slot: requestedSlot, value, blocked: false, canFill: true, reason: item.reason || `引用 ${fact?.id || "本地事实"}` };
+}
+
+function normalizeAiScanResult(result, model, facts = []) {
   const pageFields = new Map((model.fields || []).map((field) => [field.id, field]));
+  const factsById = new Map(facts.map((fact) => [fact.id, fact]));
+  const factsBySlot = facts.reduce((map, fact) => {
+    const slot = normalizeSlot(fact.slot);
+    if (!map.has(slot)) map.set(slot, []);
+    map.get(slot).push(fact);
+    return map;
+  }, new Map());
   const aiFields = Array.isArray(result.fields) ? result.fields : [];
   const normalized = aiFields
     .map((item) => {
       const base = pageFields.get(String(item.id || ""));
       if (!base) return null;
-      const value = String(item.value || "").trim().slice(0, 3000);
       const confidence = Math.max(0, Math.min(1, Number(item.confidence) || 0));
-      const blocked = Boolean(item.blocked || item.sensitive || isSensitiveAiField(item));
-      const key = String(item.key || "");
+      const validated = validateAiAssignment(item, base, factsById, factsBySlot);
       return {
         ...base,
-        key: key === "skip" ? "" : key,
-        matchLabel: String(item.label || item.key || "AI 识别字段").slice(0, 80),
-        value,
+        key: validated.slot,
+        factId: String(item.factId || ""),
+        matchLabel: String(item.label || validated.slot || "AI 识别字段").slice(0, 80),
+        value: validated.value.slice(0, 3000),
         confidence,
-        blocked,
+        blocked: Boolean(item.blocked || item.sensitive || validated.blocked),
         sensitive: Boolean(item.sensitive),
-        reason: String(item.reason || "").slice(0, 180),
+        reason: String(validated.reason || item.reason || "").slice(0, 180),
         source: "ai",
-        canFill: Boolean(value && !blocked && confidence >= 0.55)
+        canFill: Boolean(validated.canFill && confidence >= 0.55)
       };
     })
     .filter(Boolean);
@@ -453,12 +720,13 @@ function normalizeAiScanResult(result, model) {
 }
 
 async function aiScanPageModel(model) {
+  const facts = buildCandidateFacts(profile || {});
   const result = await callDeepSeek("AI 字段识别", aiScanPrompt(model, profile || {}), {
     json: true,
     temperature: 0.12,
     maxTokens: 4200
   });
-  return normalizeAiScanResult(result, model);
+  return normalizeAiScanResult(result, model, facts);
 }
 
 async function scanCurrentPage() {
