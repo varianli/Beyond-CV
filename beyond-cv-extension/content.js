@@ -1,5 +1,5 @@
 (function () {
-  const CONTENT_VERSION = "0.3.0";
+  const CONTENT_VERSION = "0.3.1";
   if (window.__beyondCvContentVersion === CONTENT_VERSION) return;
   window.__beyondCvContentVersion = CONTENT_VERSION;
 
@@ -11,7 +11,8 @@
     "select",
     "[contenteditable='true']",
     "[role='combobox']",
-    "[aria-haspopup='listbox']"
+    "[aria-haspopup='listbox']",
+    "[aria-haspopup='tree']"
   ].join(",");
   let visualTextCache = [];
 
@@ -296,7 +297,7 @@
   function cleanContainerText(root, limit = 360) {
     if (!root) return "";
     const clone = root.cloneNode(true);
-    clone.querySelectorAll("input, textarea, select, option, [role='combobox'], [aria-haspopup='listbox'], [contenteditable='true'], script, style, svg, .bcv-field-marker").forEach((node) => node.remove());
+    clone.querySelectorAll("input, textarea, select, option, [role='combobox'], [aria-haspopup='listbox'], [aria-haspopup='tree'], [contenteditable='true'], script, style, svg, .bcv-field-marker").forEach((node) => node.remove());
     return compact(clone.innerText || clone.textContent || "").slice(0, limit);
   }
 
@@ -362,7 +363,7 @@
     const text = `${directLabelText(root)} ${cleanContainerText(root, 220)} ${el.getAttribute("placeholder") || ""} ${el.getAttribute("name") || ""} ${el.id || ""}`;
     if (/^\+?\d{1,4}$/.test(value) && /手机|电话|mobile|phone|tel/i.test(text)) return "phone_country_code";
     if (index > 0 && /手机|电话|mobile|phone|tel/i.test(text)) return "phone_number";
-    if (el.tagName === "SELECT" || el.getAttribute("role") === "combobox" || el.getAttribute("aria-haspopup") === "listbox") return "choice";
+    if (el.tagName === "SELECT" || el.getAttribute("role") === "combobox" || el.getAttribute("aria-haspopup") === "listbox" || el.getAttribute("aria-haspopup") === "tree") return "choice";
     if (el.tagName === "TEXTAREA" || el.isContentEditable) return "long_text";
     return "text";
   }
@@ -599,6 +600,10 @@
     return /cascader|tree|地区|地点|城市|工作地|location|city/i.test(text);
   }
 
+  function isBytedancePage() {
+    return /(^|\.)jobs\.bytedance\.com$/i.test(location.hostname);
+  }
+
   function dropdownPopups() {
     return Array.from(document.querySelectorAll(DROPDOWN_POPUP_SELECTOR)).filter(isVisible);
   }
@@ -700,6 +705,243 @@
     if (key === "phoneNumber") return valueFor(profile, "phone").replace(/^\+?86/, "");
     if (key === "cityPreference") return valueFor(profile, "city") || valueFor(profile, "address");
     return valueFor(profile, key);
+  }
+
+  function itemAt(profile, type, index = 0, predicate = null) {
+    const items = profile?.knowledgeBase?.[type];
+    const list = Array.isArray(items) ? items : [];
+    const filtered = predicate ? list.filter(predicate) : list;
+    return filtered[index] || list.filter((item) => item.included)[index] || list[index] || {};
+  }
+
+  function dateParts(dateText) {
+    const matches = [...compact(dateText).matchAll(/\d{4}[./-]\d{1,2}|\d{4}/g)].map((match) => match[0]);
+    return {
+      start: normalizeMonth(matches[0] || ""),
+      end: normalizeMonth(matches[matches.length - 1] || "")
+    };
+  }
+
+  function compactItemText(item = {}) {
+    return [item.org, item.role, item.city, item.date, item.detail]
+      .filter(Boolean)
+      .map((part) => compact(part))
+      .filter(Boolean)
+      .join(" | ");
+  }
+
+  function isAwardItem(item = {}) {
+    return /奖|荣誉|奖学金|冠军|亚军|季军|Scholarship|Award|Honor|Prize/i.test(`${item.org || ""} ${item.role || ""} ${item.detail || ""}`);
+  }
+
+  function languageFromProfile(profile) {
+    const skills = profile?.knowledgeBase?.skills || {};
+    const text = [skills.languages, profile?.skills].filter(Boolean).join("\n");
+    if (/英语|English|CET|雅思|托福|IELTS|TOEFL/i.test(text)) return "英语";
+    if (/中文|Mandarin|Chinese/i.test(text)) return "中文";
+    return "";
+  }
+
+  function splitStructuredLine(text) {
+    return compact(text)
+      .split(/\s*[|｜]\s*/)
+      .map((part) => compact(part))
+      .filter(Boolean);
+  }
+
+  function normalizeExperienceLikeItem(item = {}) {
+    const next = {
+      org: cleanProfileValue(item.org || item.company || item.school),
+      role: cleanProfileValue(item.role || item.title || item.degree),
+      city: cleanProfileValue(item.city),
+      date: cleanProfileValue(item.date),
+      detail: cleanProfileValue(item.detail || item.description)
+    };
+    const detailParts = splitStructuredLine(next.detail);
+    if (detailParts.length >= 4) {
+      next.org ||= detailParts[0] || "";
+      next.role ||= detailParts[1] || "";
+      next.city ||= detailParts[2] || "";
+      next.date ||= detailParts[3] || "";
+      next.detail = detailParts.slice(4).join(" | ") || next.detail;
+    }
+    const allText = [next.org, next.role, next.city, next.date, next.detail].filter(Boolean).join(" ");
+    next.date ||= allText.match(/\d{4}[./-]\d{1,2}\s*[-至到~—–]\s*(?:\d{4}[./-]\d{1,2}|至今|Present|Now)|\d{4}\s*[-至到~—–]\s*(?:\d{4}|至今|Present|Now)/i)?.[0] || "";
+    return next;
+  }
+
+  function bytedanceValueFor(profile, key, index = 0) {
+    const experience = normalizeExperienceLikeItem(itemAt(profile, "experience", index));
+    const experienceDates = dateParts(experience.date || "");
+    const award = normalizeExperienceLikeItem(itemAt(profile, "campus", index, isAwardItem));
+    const awardDates = dateParts(award.date || "");
+    const values = {
+      experienceCompany: experience.org || "",
+      experienceRole: experience.role || "",
+      experienceStart: experienceDates.start,
+      experienceEnd: experienceDates.end,
+      experienceSummary: experience.detail || compactItemText(experience),
+      awardName: award.org || award.role || "",
+      awardDate: awardDates.end || awardDates.start,
+      awardSummary: award.detail || compactItemText(award),
+      language: languageFromProfile(profile)
+    };
+    if (Object.prototype.hasOwnProperty.call(values, key)) return cleanProfileValue(values[key]);
+    return semanticValueFor(profile, key);
+  }
+
+  function bytedanceSlotFor(labelText, sectionText, controlIndex = 0, controlCount = 1) {
+    const label = cleanLabelText(labelText).replace(/\s+/g, "");
+    const section = cleanLabelText(sectionText).replace(/\s+/g, "");
+    if (!label) return null;
+    if (/公司名称|公司|单位名称|雇主|Employer|Company/i.test(label)) return { key: "experienceCompany", label: "公司名称", confidence: 0.99, repeatGroup: "experience" };
+    if (/职位名称|职位|岗位名称|岗位|Role|Position|Title/i.test(label)) return { key: "experienceRole", label: "职位名称", confidence: 0.99, repeatGroup: "experience" };
+    if (/描述|工作内容|职责|成果|Description/i.test(label) && /工作经历|实习|经历|Experience/i.test(section)) {
+      return { key: "experienceSummary", label: "工作经历描述", confidence: 0.96, repeatGroup: "experience" };
+    }
+    if (/起止时间|工作时间|开始时间|结束时间|入职|离职|Time|Date/i.test(label) && /工作经历|实习|经历|Experience/i.test(section)) {
+      return controlCount > 1 && controlIndex > 0
+        ? { key: "experienceEnd", label: "工作结束时间", confidence: 0.96, repeatGroup: "experienceDate" }
+        : { key: "experienceStart", label: "工作起始时间", confidence: 0.96, repeatGroup: "experienceDate" };
+    }
+    if (/获奖名称|奖项名称|奖励名称|荣誉名称|Award|Honor/i.test(label)) return { key: "awardName", label: "获奖名称", confidence: 0.92, repeatGroup: "award" };
+    if (/获奖时间|奖励时间|AwardDate|HonorDate/i.test(label)) return { key: "awardDate", label: "获奖时间", confidence: 0.9, repeatGroup: "awardDate" };
+    if (/描述|说明|Description/i.test(label) && /获奖|奖励|荣誉|证书|Award|Honor/i.test(section)) return { key: "awardSummary", label: "获奖描述", confidence: 0.88, repeatGroup: "award" };
+    if (/语言|语种|Language/i.test(label)) return { key: "language", label: "语言", confidence: 0.86 };
+    if (/精通程度|熟练程度|语言能力|Level|Proficiency/i.test(label)) return null;
+    return semanticSlot(label, null, controlIndex, controlCount);
+  }
+
+  function bytedanceFieldLabel(el) {
+    const rect = el.getBoundingClientRect();
+    const candidates = visualTextCache
+      .map((item) => {
+        const labelRect = item.rect;
+        const text = cleanLabelText(item.text);
+        if (!/姓名|手机|电话|邮箱|工作地点|期望|学校|学历|专业|学院|学位|公司|职位|起止|时间|描述|获奖|奖励|荣誉|语言|Language|Company|Position|Description|Date/i.test(text)) return null;
+        const sameRowLeft = overlaps(labelRect.top, labelRect.bottom, rect.top - 10, rect.bottom + 10)
+          && labelRect.right <= rect.left + 18
+          && rect.left - labelRect.right <= 620;
+        const above = labelRect.bottom <= rect.top + 12
+          && rect.top - labelRect.bottom <= 96
+          && (overlaps(labelRect.left, labelRect.right, rect.left - 48, rect.right + 48)
+            || Math.abs(labelRect.left - rect.left) <= 180);
+        if (!sameRowLeft && !above) return null;
+        return {
+          text,
+          score: (sameRowLeft ? 0 : 40)
+            + Math.abs(labelRect.left - rect.left) * 0.18
+            + Math.abs(labelRect.bottom - rect.top)
+            + Math.max(0, text.length - 16)
+        };
+      })
+      .filter(Boolean)
+      .sort((a, b) => a.score - b.score);
+    return candidates[0]?.text || "";
+  }
+
+  function bytedanceSectionFor(el) {
+    const rect = el.getBoundingClientRect();
+    return visualTextCache
+      .filter((item) => item.rect.bottom <= rect.top + 8)
+      .filter((item) => /基本信息|工作经历|实习经历|教育经历|获奖|奖励|语言能力|项目经历|校园|Experience|Education|Award|Language/i.test(item.text))
+      .map((item) => ({
+        text: item.text,
+        score: rect.top - item.rect.bottom + Math.abs(rect.left - item.rect.left) * 0.04
+      }))
+      .sort((a, b) => a.score - b.score)[0]?.text || nearestSectionText(el);
+  }
+
+  function bytedanceControls() {
+    const controls = Array.from(document.querySelectorAll(FIELD_SELECTOR))
+      .filter((el) => !el.disabled && !el.readOnly && isVisible(el))
+      .filter((el) => !el.closest(DROPDOWN_POPUP_SELECTOR))
+      .filter((el) => el.type !== "checkbox" && el.type !== "radio" && el.type !== "password" && el.type !== "file");
+    return controls.filter((el) => !controls.some((other) => other !== el && other.contains(el) && isSelectLike(other)));
+  }
+
+  function bytedanceOccurrence(slot, counters) {
+    if (!slot) return 0;
+    if (/^experience/.test(slot.repeatGroup || "")) {
+      if (slot.key === "experienceCompany") {
+        const next = counters.get("experienceNext") || 0;
+        counters.set("experienceCurrent", next);
+        counters.set("experienceNext", next + 1);
+        return next;
+      }
+      return counters.get("experienceCurrent") || 0;
+    }
+    if (/^award/.test(slot.repeatGroup || "")) {
+      if (slot.key === "awardName") {
+        const next = counters.get("awardNext") || 0;
+        counters.set("awardCurrent", next);
+        counters.set("awardNext", next + 1);
+        return next;
+      }
+      return counters.get("awardCurrent") || 0;
+    }
+    const key = slot.repeatGroup || slot.key || "default";
+    const next = counters.get(key) || 0;
+    counters.set(key, next + 1);
+    return next;
+  }
+
+  async function bytedanceFieldDescriptor(control, index, profile, counters) {
+    const root = semanticRoot(control);
+    const group = semanticControls(root);
+    const groupIndex = Math.max(0, group.indexOf(control));
+    const label = bytedanceFieldLabel(control) || semanticLabelText(root, group);
+    const section = bytedanceSectionFor(control);
+    const labelText = compact([section, label, cleanContainerText(root, 320), fieldText(control)].filter(Boolean).join(" "));
+    const slot = bytedanceSlotFor(label || labelText, section, groupIndex, group.length || 1);
+    const occurrence = bytedanceOccurrence(slot, counters);
+    const id = ensureFieldId(control, index);
+    const currentValue = controlValue(control);
+    const options = await readDynamicOptions(control);
+    const inputKind = isSelectLike(control)
+      ? isTreeLike(control, `${section} ${labelText}`) ? "tree_select" : "choice"
+      : control.tagName === "TEXTAREA" || control.isContentEditable ? "long_text" : inputRole(control, root, groupIndex);
+    const value = slot ? bytedanceValueFor(profile, slot.key, occurrence) : "";
+    return {
+      id,
+      semantic: true,
+      adapter: "bytedance",
+      tag: control.tagName.toLowerCase(),
+      type: control.getAttribute("type") || "",
+      name: control.getAttribute("name") || "",
+      domId: control.id || "",
+      placeholder: control.getAttribute("placeholder") || "",
+      ariaLabel: control.getAttribute("aria-label") || "",
+      required: Boolean(control.required || control.getAttribute("aria-required") === "true" || /\*/.test(labelText)),
+      options,
+      section,
+      label,
+      visualLabel: label,
+      containerText: cleanContainerText(root, 420),
+      controlIndex: groupIndex,
+      controlCount: group.length || 1,
+      inputRole: inputKind,
+      labelText: labelText || "未识别字段",
+      key: slot?.key || "",
+      matchLabel: slot?.label || "未匹配",
+      value,
+      currentValue,
+      confidence: slot?.confidence || 0,
+      blocked: Boolean(slot?.blocked),
+      canFill: Boolean(slot && !slot.blocked && value),
+      rect: rectData(control.getBoundingClientRect())
+    };
+  }
+
+  async function collectBytedancePageFields(profile) {
+    const controls = bytedanceControls();
+    const counters = new Map();
+    const fields = [];
+    for (let index = 0; index < controls.length; index += 1) {
+      const field = await bytedanceFieldDescriptor(controls[index], index, profile, counters);
+      if (field.key || field.blocked) fields.push(field);
+    }
+    return fields;
   }
 
   function semanticControls(root) {
@@ -805,9 +1047,13 @@
     clearMarkers();
     await scrollWholePageForScan();
     visualTextCache = buildVisualTextCache();
-    const fields = await collectSemanticPageFields(profile);
+    const adapter = isBytedancePage() ? "bytedance" : "generic";
+    const fields = adapter === "bytedance"
+      ? await collectBytedancePageFields(profile)
+      : await collectSemanticPageFields(profile);
     return {
       strategy: "semantic-full-page",
+      adapter,
       url: location.href,
       title: document.title,
       fields,
@@ -968,13 +1214,48 @@
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
+  function dropdownSearchInputs() {
+    const popupInputs = dropdownPopups()
+      .flatMap((popup) => Array.from(popup.querySelectorAll([
+        "input:not([type='hidden']):not([type='checkbox']):not([type='radio'])",
+        "textarea",
+        "[contenteditable='true']"
+      ].join(","))));
+    const active = document.activeElement;
+    if (active && (active.matches?.("input, textarea, [contenteditable='true']"))) {
+      popupInputs.unshift(active);
+    }
+    return [...new Set(popupInputs)].filter((item) => !item.disabled && !item.readOnly && isVisible(item));
+  }
+
+  async function searchDropdownForValue(value) {
+    const searchInput = dropdownSearchInputs()[0];
+    if (!searchInput) return false;
+    if (searchInput.isContentEditable) {
+      searchInput.textContent = value;
+      searchInput.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: value }));
+      searchInput.dispatchEvent(new Event("change", { bubbles: true }));
+    } else {
+      setNativeValue(searchInput, value);
+    }
+    await sleep(260);
+    return true;
+  }
+
   async function fillComboBox(el, value) {
     const current = compact(el.textContent || el.value || "");
     if (current && (current.includes(value) || value.includes(current))) return true;
     el.click();
     await sleep(150);
     const normalized = value.toLowerCase();
-    const option = Array.from(document.querySelectorAll("[role='option'], li, div, span"))
+    let option = popupOptions()
+      .find((item) => optionMatchesValue(item.text, value));
+    if (!option) {
+      await searchDropdownForValue(value);
+      option = popupOptions().find((item) => optionMatchesValue(item.text, value));
+    }
+    if (!option) {
+      option = Array.from(document.querySelectorAll("[role='option'], li, div, span"))
       .filter(isVisible)
       .map((node) => ({ node, text: compact(node.textContent || "") }))
       .filter((item) => item.text && item.text.length <= 80)
@@ -982,6 +1263,7 @@
         const text = item.text.toLowerCase();
         return text === normalized || text.includes(normalized) || normalized.includes(text);
       });
+    }
     if (!option) return false;
     option.node.click();
     await sleep(80);
@@ -1021,6 +1303,14 @@
     el.click();
     await sleep(180);
     let option = popupOptions().find((item) => optionMatchesValue(item.text, value));
+    if (!option) {
+      await expandLikelyTreeParent(value);
+      option = popupOptions().find((item) => optionMatchesValue(item.text, value));
+    }
+    if (!option) {
+      await searchDropdownForValue(value);
+      option = popupOptions().find((item) => optionMatchesValue(item.text, value));
+    }
     if (!option) {
       await expandLikelyTreeParent(value);
       option = popupOptions().find((item) => optionMatchesValue(item.text, value));
