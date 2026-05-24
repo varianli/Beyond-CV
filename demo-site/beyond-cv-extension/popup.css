@@ -76,6 +76,15 @@ button:disabled {
   margin-top: 10px;
 }
 
+.ai-panel {
+  display: grid;
+  gap: 8px;
+}
+
+.sensitive-input {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
 .sync-status {
   margin: 0 0 8px;
   color: var(--muted);

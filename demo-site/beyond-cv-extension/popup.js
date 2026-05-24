@@ -8,6 +8,19 @@ const BCV_SYNC_ENDPOINT = `${BCV_SUPABASE_URL}/functions/v1/bcv-profile-sync`;
 const BCV_AUTH_ENDPOINT = `${BCV_SUPABASE_URL}/auth/v1`;
 const BCV_APPLICATIONS_KEY = "applicationRecords";
 const BCV_PROFILE_KNOWLEDGE_KEY = "profileKnowledgeBase";
+const BCV_AI_CONFIG_KEY = "beyondCvAiConfig";
+const BCV_AI_DEFAULT_CONFIG = {
+  baseUrl: "https://api.deepseek.com",
+  model: "deepseek-v4-flash",
+  apiKey: ""
+};
+const BCV_AI_SYSTEM_PROMPT = [
+  "你是一个招聘大师，最懂候选人与招聘方之间的业务对接需求。",
+  "你必须只根据用户资料库、页面字段和招聘页面上下文输出内容。",
+  "不能撒谎，不能捏造事实，不能编造学校、经历、项目、证书、技能、数据或成果。",
+  "如果资料库里没有明确答案，就返回空值并说明缺少信息。",
+  "不得自动同意协议，不得填写验证码、密码、证件号、薪资、政治宗教、婚育等敏感字段。"
+].join("\n");
 
 async function getActiveTab() {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -29,6 +42,96 @@ async function loadProfile() {
   $("accountEmailInput").value = email;
   $("accountStatus").textContent = email ? `已登录：${email}` : "未登录，可使用同步码";
   $("logoutAccountButton").disabled = !email;
+}
+
+async function loadAiSettings() {
+  const stored = await chrome.storage.local.get(BCV_AI_CONFIG_KEY);
+  const config = { ...BCV_AI_DEFAULT_CONFIG, ...(stored[BCV_AI_CONFIG_KEY] || {}) };
+  $("aiApiKeyInput").value = config.apiKey || "";
+  $("aiModelInput").value = config.model || BCV_AI_DEFAULT_CONFIG.model;
+  $("aiBaseUrlInput").value = config.baseUrl || BCV_AI_DEFAULT_CONFIG.baseUrl;
+  updateAiSettingsStatus(config.apiKey ? "AI Key 已保存" : "未保存 Key");
+}
+
+function updateAiSettingsStatus(message) {
+  $("aiSettingsStatus").textContent = message;
+}
+
+function readAiSettingsFromForm() {
+  return {
+    apiKey: $("aiApiKeyInput").value.trim(),
+    model: $("aiModelInput").value.trim() || BCV_AI_DEFAULT_CONFIG.model,
+    baseUrl: $("aiBaseUrlInput").value.trim().replace(/\/+$/, "") || BCV_AI_DEFAULT_CONFIG.baseUrl
+  };
+}
+
+async function saveAiSettings(config = readAiSettingsFromForm()) {
+  await chrome.storage.local.set({ [BCV_AI_CONFIG_KEY]: config });
+  updateAiSettingsStatus(config.apiKey ? "AI Key 已保存" : "未保存 Key");
+  return config;
+}
+
+async function requireAiSettings() {
+  const stored = await chrome.storage.local.get(BCV_AI_CONFIG_KEY);
+  const config = { ...BCV_AI_DEFAULT_CONFIG, ...(stored[BCV_AI_CONFIG_KEY] || {}) };
+  if (!config.apiKey) {
+    throw new Error("请先保存 DeepSeek API Key，或在 Beyond CV 页面导入 AI 设置。");
+  }
+  return {
+    ...config,
+    baseUrl: String(config.baseUrl || BCV_AI_DEFAULT_CONFIG.baseUrl).replace(/\/+$/, "")
+  };
+}
+
+async function callDeepSeek(task, prompt, options = {}) {
+  const config = await requireAiSettings();
+  const response = await fetch(`${config.baseUrl}/chat/completions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${config.apiKey}`
+    },
+    body: JSON.stringify({
+      model: config.model,
+      messages: [
+        { role: "system", content: BCV_AI_SYSTEM_PROMPT },
+        { role: "user", content: prompt }
+      ],
+      temperature: options.temperature ?? 0.15,
+      max_tokens: options.maxTokens ?? 2400,
+      response_format: options.json ? { type: "json_object" } : undefined,
+      thinking: { type: "disabled" }
+    })
+  });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(result.error?.message || result.message || `${task}失败：HTTP ${response.status}`);
+  }
+  const content = result.choices?.[0]?.message?.content || "";
+  if (!options.json) return content.trim();
+  try {
+    return JSON.parse(content);
+  } catch (_error) {
+    throw new Error(`${task}失败：AI 没有返回有效 JSON`);
+  }
+}
+
+async function testAiSettings() {
+  $("testAiSettingsButton").disabled = true;
+  updateAiSettingsStatus("正在测试...");
+  try {
+    await saveAiSettings();
+    const result = await callDeepSeek("AI 设置测试", "请只回复 JSON：{\"ok\":true}", {
+      json: true,
+      temperature: 0,
+      maxTokens: 80
+    });
+    updateAiSettingsStatus(result.ok ? "AI 连接正常" : "AI 已响应，请继续使用");
+  } catch (error) {
+    updateAiSettingsStatus(`测试失败：${error.message}`);
+  } finally {
+    $("testAiSettingsButton").disabled = false;
+  }
 }
 
 function profileForSyncStorage(profileData) {
@@ -154,7 +257,8 @@ function renderFields(scan) {
   const list = $("fieldList");
   list.innerHTML = "";
   const recognizedCount = scan.fields.filter((field) => field.key && !field.blocked).length;
-  $("matchCount").textContent = `${scan.matchedCount} 可填 / ${recognizedCount} 已识别 / ${scan.fields.length} 字段`;
+  const modeLabel = scan.source === "ai" ? "AI" : "规则";
+  $("matchCount").textContent = `${scan.matchedCount} 可填 / ${recognizedCount} 已识别 / ${scan.fields.length} 字段 · ${modeLabel}`;
 
   const usefulFields = scan.fields.filter((field) => field.key || field.blocked);
   if (!usefulFields.length) {
@@ -173,7 +277,9 @@ function renderFields(scan) {
       <span>
         <p class="field-title">${field.matchLabel}</p>
         <p class="field-meta">${escapeHtml(field.labelText)}</p>
-        <p class="field-meta">${field.blocked ? "敏感或协议类字段，需要手动处理" : field.value ? escapeHtml(field.value) : "已识别字段，但本地资料里缺少对应值"}</p>
+        <p class="field-meta">${field.blocked ? "敏感或协议类字段，需要手动处理" : field.value ? escapeHtml(field.value) : "已识别字段，但资料库里缺少对应值"}</p>
+        ${field.reason ? `<p class="field-meta">${escapeHtml(field.reason)}</p>` : ""}
+        ${field.confidence ? `<p class="field-meta">置信度 ${Math.round(Number(field.confidence) * 100)}%</p>` : ""}
       </span>
     `;
     list.appendChild(row);
@@ -191,19 +297,175 @@ function escapeHtml(text) {
   })[char]);
 }
 
+function trimForAi(value, limit = 6000) {
+  const text = typeof value === "string" ? value : JSON.stringify(value || "");
+  return text.length > limit ? `${text.slice(0, limit)}\n...[已截断]` : text;
+}
+
+function profileForAi(profileData = {}) {
+  const knowledgeBase = profileData.knowledgeBase || {};
+  return {
+    profile: {
+      name: profileData.name || knowledgeBase.profile?.name || "",
+      firstName: profileData.firstName || "",
+      lastName: profileData.lastName || "",
+      email: profileData.email || knowledgeBase.profile?.email || "",
+      phone: profileData.phone || knowledgeBase.profile?.phone || "",
+      city: profileData.city || profileData.address || knowledgeBase.profile?.address || "",
+      address: profileData.address || knowledgeBase.profile?.address || "",
+      school: profileData.school || "",
+      degree: profileData.degree || "",
+      educationLevel: profileData.educationLevel || "",
+      educationStart: profileData.educationStart || "",
+      educationEnd: profileData.educationEnd || "",
+      college: profileData.college || "",
+      major: profileData.major || "",
+      skills: profileData.skills || ""
+    },
+    knowledgeBase: {
+      rawText: trimForAi(knowledgeBase.rawText || "", 8000),
+      education: knowledgeBase.education || [],
+      experience: knowledgeBase.experience || [],
+      campus: knowledgeBase.campus || [],
+      skills: knowledgeBase.skills || {},
+      familyInfo: knowledgeBase.familyInfo || []
+    }
+  };
+}
+
+function pageModelForAi(model) {
+  return {
+    url: model.url,
+    title: model.title,
+    fields: (model.fields || []).slice(0, 80).map((field) => ({
+      id: field.id,
+      tag: field.tag,
+      type: field.type,
+      name: field.name,
+      domId: field.domId,
+      labelText: trimForAi(field.labelText, 500),
+      placeholder: field.placeholder,
+      ariaLabel: field.ariaLabel,
+      currentValue: trimForAi(field.currentValue, 240),
+      required: field.required,
+      options: field.options || [],
+      rect: field.rect
+    }))
+  };
+}
+
+function aiScanPrompt(model, profileData) {
+  return `
+请分析招聘网站申请表字段，并从候选人在 Beyond CV 中维护的完整资料库里选择真实可填内容。
+
+硬性规则：
+- 只能使用“资料库”里已经存在的信息，不要猜测、不要编造。
+- 不要把邮箱填到工作地点、不要把姓名填到手机号、不要用字段当前值作为候选人事实。
+- 如果字段是手机号国家区号且已显示 +86，可以跳过；手机号输入框才填手机号主体。
+- select/combobox 字段必须优先匹配 options 中已有选项；没有合适选项就留空。
+- 不填写密码、验证码、证件号、身份证/护照、薪资、政治宗教、婚育、隐私协议/同意勾选等敏感或协议字段。
+- 工作经历、教育经历、开放题、BQ、动机类字段可以从完整资料库选择最相关真实经历；若缺少事实，留空。
+- 输出 JSON，不要 Markdown。
+
+JSON 结构：
+{
+  "fields": [
+    {
+      "id": "页面字段 id",
+      "key": "name|phone|email|city|school|educationLevel|degree|major|college|educationStart|educationEnd|skills|summary|motivation|custom|skip",
+      "label": "给用户看的中文字段名",
+      "value": "准备填写的真实值，不能填则为空字符串",
+      "confidence": 0.0,
+      "blocked": false,
+      "sensitive": false,
+      "reason": "简短说明为什么这样匹配，或为什么跳过"
+    }
+  ]
+}
+
+页面字段模型：
+${trimForAi(pageModelForAi(model), 12000)}
+
+资料库：
+${trimForAi(profileForAi(profileData), 14000)}
+`;
+}
+
+function isSensitiveAiField(field) {
+  const text = `${field.label || ""} ${field.key || ""} ${field.reason || ""}`.toLowerCase();
+  return /password|captcha|verification|id\s*number|passport|salary|compensation|privacy|terms|consent|agree|身份证|护照|证件|验证码|密码|薪资|政治|宗教|婚育|婚姻|隐私|协议|同意/.test(text);
+}
+
+function normalizeAiScanResult(result, model) {
+  const pageFields = new Map((model.fields || []).map((field) => [field.id, field]));
+  const aiFields = Array.isArray(result.fields) ? result.fields : [];
+  const normalized = aiFields
+    .map((item) => {
+      const base = pageFields.get(String(item.id || ""));
+      if (!base) return null;
+      const value = String(item.value || "").trim().slice(0, 3000);
+      const confidence = Math.max(0, Math.min(1, Number(item.confidence) || 0));
+      const blocked = Boolean(item.blocked || item.sensitive || isSensitiveAiField(item));
+      const key = String(item.key || "");
+      return {
+        ...base,
+        key: key === "skip" ? "" : key,
+        matchLabel: String(item.label || item.key || "AI 识别字段").slice(0, 80),
+        value,
+        confidence,
+        blocked,
+        sensitive: Boolean(item.sensitive),
+        reason: String(item.reason || "").slice(0, 180),
+        source: "ai",
+        canFill: Boolean(value && !blocked && confidence >= 0.55)
+      };
+    })
+    .filter(Boolean);
+  const byId = new Map(normalized.map((field) => [field.id, field]));
+  const fields = (model.fields || []).map((field) => byId.get(field.id) || {
+    ...field,
+    key: "",
+    matchLabel: "AI 未匹配",
+    value: "",
+    confidence: 0,
+    blocked: false,
+    canFill: false,
+    source: "ai"
+  });
+  return {
+    source: "ai",
+    url: model.url,
+    title: model.title,
+    fields,
+    matchedCount: fields.filter((field) => field.canFill).length,
+    blockedCount: fields.filter((field) => field.blocked).length
+  };
+}
+
+async function aiScanPageModel(model) {
+  const result = await callDeepSeek("AI 字段识别", aiScanPrompt(model, profile || {}), {
+    json: true,
+    temperature: 0.12,
+    maxTokens: 4200
+  });
+  return normalizeAiScanResult(result, model);
+}
+
 async function scanCurrentPage() {
   $("scanButton").disabled = true;
-  $("scanStatus").textContent = "正在扫描当前页面字段...";
+  $("scanStatus").textContent = "正在读取页面字段并交给 AI 判断...";
   try {
     const tab = await getActiveTab();
     $("pageTitle").textContent = tab?.title || "当前页面";
-    lastScan = await sendToTab("BCV_SCAN", { profile });
+    const model = await sendToTab("BCV_PAGE_MODEL", { profile });
+    lastScan = await aiScanPageModel(model);
+    await sendToTab("BCV_MARK_FIELDS", { fields: lastScan.fields });
     $("statusDot").classList.add("ready");
-    $("scanStatus").textContent = `已扫描：${lastScan.matchedCount} 个字段可填，${lastScan.blockedCount} 个字段需手动确认。`;
+    $("scanStatus").textContent = `AI 已识别：${lastScan.matchedCount} 个字段可填，${lastScan.blockedCount} 个字段需手动处理。请检查后再填写。`;
     renderFields(lastScan);
   } catch (error) {
-    $("scanStatus").textContent = "无法在当前页面运行。请切换到 http、https 或已允许文件访问的招聘表单页面。";
-    $("fieldList").innerHTML = '<div class="empty">当前页面不支持扫描。</div>';
+    $("scanStatus").textContent = `AI 识别失败：${error.message}`;
+    $("fieldList").innerHTML = '<div class="empty">当前页面暂未生成可填字段。</div>';
   } finally {
     $("scanButton").disabled = false;
   }
@@ -212,15 +474,17 @@ async function scanCurrentPage() {
 async function fillSelectedFields() {
   const ids = Array.from(document.querySelectorAll("[data-field-id]:checked")).map((input) => input.dataset.fieldId);
   if (!ids.length) return;
+  const selectedFields = (lastScan?.fields || []).filter((field) => ids.includes(field.id) && field.canFill);
   $("fillButton").disabled = true;
   $("fillButton").textContent = "填入中...";
   try {
-    const result = await sendToTab("BCV_FILL", { ids, profile });
-    $("scanStatus").textContent = `已填入 ${result.filled} 个字段。请在页面上检查后再提交。`;
+    const result = await sendToTab("BCV_FILL", { fields: selectedFields, profile });
+    if (result.error) throw new Error(result.error);
+    $("scanStatus").textContent = `已填入 ${result.filled} 个 AI 字段。请在页面上检查后再提交。`;
   } catch (error) {
-    $("scanStatus").textContent = "填入失败，请刷新页面后重试。";
+    $("scanStatus").textContent = `填入失败：${error.message}`;
   } finally {
-    $("fillButton").textContent = "填入已选字段";
+    $("fillButton").textContent = "填入已选 AI 字段";
     $("fillButton").disabled = false;
   }
 }
@@ -240,8 +504,16 @@ async function importProfile() {
     }
     profile = { ...profile, ...result.profile };
     await persistProfile(profile);
+    if (result.aiConfig?.apiKey) {
+      await saveAiSettings({ ...BCV_AI_DEFAULT_CONFIG, ...result.aiConfig });
+      $("aiApiKeyInput").value = result.aiConfig.apiKey;
+      $("aiModelInput").value = result.aiConfig.model || BCV_AI_DEFAULT_CONFIG.model;
+      $("aiBaseUrlInput").value = result.aiConfig.baseUrl || BCV_AI_DEFAULT_CONFIG.baseUrl;
+    }
     $("profileName").textContent = profile.name || "未设置姓名";
-    $("scanStatus").textContent = "已从 Beyond CV 页面导入资料。";
+    $("scanStatus").textContent = result.aiConfig?.apiKey
+      ? "已从 Beyond CV 页面导入资料和 AI 设置。"
+      : "已从 Beyond CV 页面导入资料。";
   } finally {
     $("importProfileButton").disabled = false;
   }
@@ -330,23 +602,21 @@ async function syncFromCloud() {
 
 async function directFillPage() {
   $("directFillButton").disabled = true;
-  $("directFillButton").textContent = "直填中...";
+  $("directFillButton").textContent = "AI 填入中...";
   try {
-    const result = await directFillInPage(profile);
+    const model = await sendToTab("BCV_PAGE_MODEL", { profile });
+    lastScan = await aiScanPageModel(model);
+    await sendToTab("BCV_MARK_FIELDS", { fields: lastScan.fields });
+    renderFields(lastScan);
+    const fillable = lastScan.fields.filter((field) => field.canFill);
+    const result = await sendToTab("BCV_FILL", { fields: fillable, profile });
+    if (result.error) throw new Error(result.error);
     $("statusDot").classList.add("ready");
-    $("scanStatus").textContent = `已按页面字段直填 ${result.filled} 项；${result.skipped} 项未处理。请在页面检查后再保存。`;
-    if (result.model?.fields) {
-      lastScan = {
-        fields: result.model.fields,
-        matchedCount: result.model.fields.filter((field) => field.canFill).length,
-        blockedCount: result.model.fields.filter((field) => field.blocked).length
-      };
-      renderFields(lastScan);
-    }
+    $("scanStatus").textContent = `AI 已识别并填入 ${result.filled} 项。请逐项检查后再提交。`;
   } catch (error) {
-    $("scanStatus").textContent = "直填失败。请刷新招聘页面并重新加载扩展后再试。";
+    $("scanStatus").textContent = `AI 填入失败：${error.message}`;
   } finally {
-    $("directFillButton").textContent = "按页面字段直填";
+    $("directFillButton").textContent = "AI 识别并填入";
     $("directFillButton").disabled = false;
   }
 }
@@ -683,11 +953,16 @@ async function directFillInPage(profileData) {
 
 document.addEventListener("DOMContentLoaded", async () => {
   await loadProfile();
+  await loadAiSettings();
   await loadApplicationDraft();
+  const tab = await getActiveTab();
+  $("pageTitle").textContent = tab?.title || "当前页面";
   $("scanButton").addEventListener("click", scanCurrentPage);
   $("fillButton").addEventListener("click", fillSelectedFields);
   $("clearButton").addEventListener("click", clearMarks);
   $("importProfileButton").addEventListener("click", importProfile);
+  $("saveAiSettingsButton").addEventListener("click", () => saveAiSettings());
+  $("testAiSettingsButton").addEventListener("click", testAiSettings);
   $("recordApplicationButton").addEventListener("click", recordApplication);
   $("loginAccountButton").addEventListener("click", loginAccount);
   $("logoutAccountButton").addEventListener("click", logoutAccount);
@@ -695,5 +970,4 @@ document.addEventListener("DOMContentLoaded", async () => {
   $("directFillButton").addEventListener("click", directFillPage);
   $("editProfileButton").addEventListener("click", () => chrome.runtime.openOptionsPage());
   $("fillButton").disabled = true;
-  scanCurrentPage();
 });

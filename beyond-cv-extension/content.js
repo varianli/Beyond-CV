@@ -1,5 +1,5 @@
 (function () {
-  const CONTENT_VERSION = "0.1.7";
+  const CONTENT_VERSION = "0.1.8";
   if (window.__beyondCvContentVersion === CONTENT_VERSION) return;
   window.__beyondCvContentVersion = CONTENT_VERSION;
 
@@ -9,7 +9,9 @@
     "input:not([type='hidden']):not([type='submit']):not([type='button']):not([type='reset']):not([type='checkbox']):not([type='radio']):not([type='file'])",
     "textarea",
     "select",
-    "[contenteditable='true']"
+    "[contenteditable='true']",
+    "[role='combobox']",
+    "[aria-haspopup='listbox']"
   ].join(",");
   let visualTextCache = [];
 
@@ -406,6 +408,23 @@
     };
   }
 
+  function fieldOptions(el) {
+    if (el.tagName === "SELECT") {
+      return Array.from(el.options)
+        .map((option) => compact(option.textContent || option.value))
+        .filter(Boolean)
+        .slice(0, 40);
+    }
+    const ariaOwns = compact(el.getAttribute("aria-owns") || el.getAttribute("aria-controls"));
+    const ownedOptions = ariaOwns
+      .split(/\s+/)
+      .flatMap((id) => Array.from(document.getElementById(id)?.querySelectorAll("[role='option'], li") || []))
+      .map((option) => compact(option.textContent))
+      .filter(Boolean)
+      .slice(0, 40);
+    return ownedOptions;
+  }
+
   function fieldDescriptor(el, index, profile) {
     const labelText = fieldText(el);
     const match = classifyField(el, labelText);
@@ -415,6 +434,12 @@
       id,
       tag: el.tagName.toLowerCase(),
       type: el.getAttribute("type") || "",
+      name: el.getAttribute("name") || "",
+      domId: el.id || "",
+      placeholder: el.getAttribute("placeholder") || "",
+      ariaLabel: el.getAttribute("aria-label") || "",
+      required: Boolean(el.required || el.getAttribute("aria-required") === "true" || /\*/.test(labelText)),
+      options: fieldOptions(el),
       labelText: labelText || "未识别字段",
       key: match?.key || "",
       matchLabel: match?.label || "未匹配",
@@ -430,8 +455,7 @@
   function collectPageFields(profile) {
     return Array.from(document.querySelectorAll(FIELD_SELECTOR))
       .filter((el) => !el.disabled && !el.readOnly && isVisible(el))
-      .map((el, index) => fieldDescriptor(el, index, profile))
-      .filter((field) => field.key || /input|textarea|select/i.test(field.tag));
+      .map((el, index) => fieldDescriptor(el, index, profile));
   }
 
   function buildPageModel(profile) {
@@ -531,24 +555,69 @@
     return false;
   }
 
-  function fill(ids, profile) {
+  function sleep(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  async function fillComboBox(el, value) {
+    const current = compact(el.textContent || el.value || "");
+    if (current && (current.includes(value) || value.includes(current))) return true;
+    el.click();
+    await sleep(150);
+    const normalized = value.toLowerCase();
+    const option = Array.from(document.querySelectorAll("[role='option'], li, div, span"))
+      .filter(isVisible)
+      .map((node) => ({ node, text: compact(node.textContent || "") }))
+      .filter((item) => item.text && item.text.length <= 80)
+      .find((item) => {
+        const text = item.text.toLowerCase();
+        return text === normalized || text.includes(normalized) || normalized.includes(text);
+      });
+    if (!option) return false;
+    option.node.click();
+    await sleep(80);
+    return true;
+  }
+
+  async function fill(fieldsOrIds, profile) {
     let filled = 0;
-    ids.forEach((id) => {
+    const aiFields = Array.isArray(fieldsOrIds) && typeof fieldsOrIds[0] === "object";
+    const entries = aiFields
+      ? fieldsOrIds
+      : (fieldsOrIds || []).map((id) => {
+        const el = document.querySelector(`[data-bcv-field-id="${CSS.escape(id)}"]`);
+        if (!el) return null;
+        const labelText = fieldText(el);
+        const match = classifyField(el, labelText);
+        return {
+          id,
+          key: match?.key || "",
+          matchLabel: match?.label || "",
+          value: match && !match.blocked ? valueFor(profile, match.key) : "",
+          blocked: Boolean(match?.blocked)
+        };
+      }).filter(Boolean);
+
+    for (const field of entries) {
+      const id = field.id;
       const el = document.querySelector(`[data-bcv-field-id="${CSS.escape(id)}"]`);
-      if (!el) return;
-      const labelText = fieldText(el);
-      const match = classifyField(el, labelText);
-      if (!match || match.blocked) return;
-      const value = valueFor(profile, match.key);
-      if (!value) return;
+      if (!el) continue;
+      if (field.blocked || field.sensitive) continue;
+      const value = cleanProfileValue(field.value);
+      if (!value) continue;
       if (el.tagName === "SELECT") {
         if (fillSelect(el, value)) filled += 1;
-        return;
+        continue;
       }
-      if (el.type === "checkbox" || el.type === "radio") return;
+      if (el.getAttribute("role") === "combobox" || el.getAttribute("aria-haspopup") === "listbox") {
+        if (await fillComboBox(el, value)) filled += 1;
+        continue;
+      }
+      if (el.type === "checkbox" || el.type === "radio" || el.type === "password" || el.type === "file") continue;
       setNativeValue(el, value);
+      markField({ ...field, canFill: true });
       filled += 1;
-    });
+    }
     return { filled };
   }
 
@@ -720,6 +789,21 @@
       familyInfo: document.getElementById("familyInfoToggle")?.checked ? collectBeyondCvFamilyRows() : [],
       updatedAt: new Date().toISOString()
     };
+  }
+
+  function exportBeyondCvAiConfig() {
+    try {
+      const raw = localStorage.getItem("beyondCvAiConfig");
+      if (!raw) return null;
+      const config = JSON.parse(raw);
+      return {
+        apiKey: String(config.apiKey || ""),
+        model: String(config.model || "deepseek-v4-flash"),
+        baseUrl: String(config.baseUrl || "https://api.deepseek.com").replace(/\/+$/, "")
+      };
+    } catch (_error) {
+      return null;
+    }
   }
 
   function exportBeyondCvProfile() {
@@ -905,8 +989,16 @@
       sendResponse(buildPageModel(message.profile || {}));
       return true;
     }
+    if (message?.type === "BCV_MARK_FIELDS") {
+      clearMarkers();
+      (message.fields || []).filter((field) => field.canFill || field.blocked || field.key).forEach(markField);
+      sendResponse({ ok: true });
+      return true;
+    }
     if (message?.type === "BCV_FILL") {
-      sendResponse(fill(message.ids || [], message.profile || {}));
+      fill(message.fields || message.ids || [], message.profile || {})
+        .then(sendResponse)
+        .catch((error) => sendResponse({ filled: 0, error: error.message }));
       return true;
     }
     if (message?.type === "BCV_DIRECT_FILL") {
@@ -919,7 +1011,7 @@
       return true;
     }
     if (message?.type === "BCV_EXPORT_PROFILE") {
-      sendResponse({ profile: exportBeyondCvProfile() });
+      sendResponse({ profile: exportBeyondCvProfile(), aiConfig: exportBeyondCvAiConfig() });
       return true;
     }
     if (message?.type === "BCV_APPLICATION_CONTEXT") {

@@ -22,9 +22,25 @@
           <p class="label">当前页面</p>
           <p id="pageTitle" class="page-title">等待扫描</p>
         </div>
-        <button id="scanButton" type="button">扫描</button>
+        <button id="scanButton" type="button">AI 识别</button>
       </div>
-      <p id="scanStatus" class="muted">打开招聘网站后点击扫描，插件会识别可填字段。</p>
+      <p id="scanStatus" class="muted">打开招聘网站后点击 AI 识别，插件会结合完整资料库判断每个字段该填什么。</p>
+    </section>
+
+    <section class="panel ai-panel">
+      <div class="row">
+        <div>
+          <p class="label">AI 识别设置</p>
+          <p id="aiSettingsStatus" class="page-title">未保存 Key</p>
+        </div>
+        <button id="testAiSettingsButton" class="secondary" type="button">测试</button>
+      </div>
+      <input id="aiApiKeyInput" class="sync-input sensitive-input" type="password" autocomplete="off" placeholder="DeepSeek API Key" />
+      <div class="sync-grid">
+        <input id="aiModelInput" class="sync-input" placeholder="deepseek-v4-flash" />
+        <input id="aiBaseUrlInput" class="sync-input" placeholder="https://api.deepseek.com" />
+      </div>
+      <button id="saveAiSettingsButton" class="secondary full" type="button">保存 AI 设置</button>
     </section>
 
     <section class="panel application">
@@ -75,7 +91,7 @@
         <input id="syncTokenInput" class="sync-input" placeholder="粘贴 Supabase 同步码" />
         <button id="cloudSyncButton" class="secondary full" type="button">从云端同步资料</button>
       </div>
-      <button id="directFillButton" class="full" type="button">按页面字段直填</button>
+      <button id="directFillButton" class="full" type="button">AI 识别并填入</button>
     </section>
 
     <section class="panel">
@@ -87,7 +103,7 @@
     </section>
 
     <footer class="footer">
-      <button id="fillButton" type="button">填入已选字段</button>
+      <button id="fillButton" type="button">填入已选 AI 字段</button>
       <button id="clearButton" class="secondary" type="button">清除标记</button>
     </footer>
   </main>
