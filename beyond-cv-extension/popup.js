@@ -760,6 +760,31 @@ function normalizeAiScanResult(result, model, facts = []) {
   };
 }
 
+function normalizeSemanticScanResult(model) {
+  const fields = (model.fields || []).map((field) => ({
+    ...field,
+    source: "semantic",
+    confidence: Number(field.confidence) || 0,
+    canFill: Boolean(field.canFill && field.value && !field.blocked)
+  }));
+  return {
+    source: "semantic",
+    strategy: model.strategy || "semantic-full-page",
+    url: model.url,
+    title: model.title,
+    fields,
+    matchedCount: fields.filter((field) => field.canFill).length,
+    blockedCount: fields.filter((field) => field.blocked).length
+  };
+}
+
+async function scanFullPageModel() {
+  const model = await sendToTab("BCV_DEEP_PAGE_MODEL", { profile });
+  if (model?.error) throw new Error(model.error);
+  if (model?.strategy === "semantic-full-page") return normalizeSemanticScanResult(model);
+  return aiScanPageModel(model);
+}
+
 async function aiScanPageModel(model) {
   const facts = buildCandidateFacts(profile || {});
   const result = await callDeepSeek("AI 字段识别", aiScanPrompt(model, profile || {}), {
@@ -772,18 +797,17 @@ async function aiScanPageModel(model) {
 
 async function scanCurrentPage() {
   $("scanButton").disabled = true;
-  $("scanStatus").textContent = "正在读取页面字段并交给 AI 判断...";
+  $("scanStatus").textContent = "正在滚动读取整页表单，并建立语义字段图谱...";
   try {
     const tab = await getActiveTab();
     $("pageTitle").textContent = tab?.title || "当前页面";
-    const model = await sendToTab("BCV_PAGE_MODEL", { profile });
-    lastScan = await aiScanPageModel(model);
+    lastScan = await scanFullPageModel();
     await sendToTab("BCV_MARK_FIELDS", { fields: lastScan.fields });
     $("statusDot").classList.add("ready");
-    $("scanStatus").textContent = `AI 已识别：${lastScan.matchedCount} 个字段可填，${lastScan.blockedCount} 个字段需手动处理。请检查后再填写。`;
+    $("scanStatus").textContent = `整页扫描完成：${lastScan.matchedCount} 个字段可填，${lastScan.blockedCount} 个字段需手动处理。请检查后再填写。`;
     renderFields(lastScan);
   } catch (error) {
-    $("scanStatus").textContent = `AI 识别失败：${error.message}`;
+    $("scanStatus").textContent = `整页扫描失败：${error.message}`;
     $("fieldList").innerHTML = '<div class="empty">当前页面暂未生成可填字段。</div>';
   } finally {
     $("scanButton").disabled = false;
@@ -799,7 +823,7 @@ async function fillSelectedFields() {
   try {
     const result = await sendToTab("BCV_FILL", { fields: selectedFields, profile });
     if (result.error) throw new Error(result.error);
-    $("scanStatus").textContent = `已填入 ${result.filled} 个 AI 字段。请在页面上检查后再提交。`;
+    $("scanStatus").textContent = `已填入 ${result.filled} 个字段。请在页面上检查后再提交。`;
   } catch (error) {
     $("scanStatus").textContent = `填入失败：${error.message}`;
   } finally {
@@ -921,21 +945,20 @@ async function syncFromCloud() {
 
 async function directFillPage() {
   $("directFillButton").disabled = true;
-  $("directFillButton").textContent = "AI 填入中...";
+  $("directFillButton").textContent = "全表扫描中...";
   try {
-    const model = await sendToTab("BCV_PAGE_MODEL", { profile });
-    lastScan = await aiScanPageModel(model);
+    lastScan = await scanFullPageModel();
     await sendToTab("BCV_MARK_FIELDS", { fields: lastScan.fields });
     renderFields(lastScan);
     const fillable = lastScan.fields.filter((field) => field.canFill);
     const result = await sendToTab("BCV_FILL", { fields: fillable, profile });
     if (result.error) throw new Error(result.error);
     $("statusDot").classList.add("ready");
-    $("scanStatus").textContent = `AI 已识别并填入 ${result.filled} 项。请逐项检查后再提交。`;
+    $("scanStatus").textContent = `整页扫描并填入 ${result.filled} 项。请逐项检查后再提交。`;
   } catch (error) {
-    $("scanStatus").textContent = `AI 填入失败：${error.message}`;
+    $("scanStatus").textContent = `整页填入失败：${error.message}`;
   } finally {
-    $("directFillButton").textContent = "AI 识别并填入";
+    $("directFillButton").textContent = "全表扫描并填入";
     $("directFillButton").disabled = false;
   }
 }

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Beyond CV Autofill Assistant",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Scan recruiting forms and fill matched fields after user confirmation. It never submits applications automatically.",
   "permissions": ["activeTab", "storage", "scripting"],
   "host_permissions": ["http://*/*", "https://*/*", "file:///*"],

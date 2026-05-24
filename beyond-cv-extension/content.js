@@ -1,5 +1,5 @@
 (function () {
-  const CONTENT_VERSION = "0.2.0";
+  const CONTENT_VERSION = "0.3.0";
   if (window.__beyondCvContentVersion === CONTENT_VERSION) return;
   window.__beyondCvContentVersion = CONTENT_VERSION;
 
@@ -63,6 +63,34 @@
     "[class*='formItem']",
     "[class*='field']",
     "[class*='Field']"
+  ].join(",");
+
+  const DROPDOWN_POPUP_SELECTOR = [
+    "[role='listbox']",
+    "[role='tree']",
+    "[role='menu']",
+    ".ant-select-dropdown",
+    ".ant-cascader-dropdown",
+    ".arco-select-popup",
+    ".arco-cascader-popup",
+    ".semi-select-dropdown",
+    ".semi-cascader",
+    ".el-select-dropdown",
+    "[class*='dropdown']",
+    "[class*='Dropdown']",
+    "[class*='popup']",
+    "[class*='Popup']"
+  ].join(",");
+
+  const SELECTABLE_OPTION_SELECTOR = [
+    "[role='option']",
+    "[role='treeitem']",
+    "[role='menuitem']",
+    "li",
+    "[class*='option']",
+    "[class*='Option']",
+    "[class*='item']",
+    "[class*='Item']"
   ].join(",");
 
   const SECTION_TITLE_SELECTOR = [
@@ -554,6 +582,243 @@
     return ownedOptions;
   }
 
+  function controlValue(el) {
+    return compact(el?.value || el?.innerText || el?.textContent || "");
+  }
+
+  function isSelectLike(el) {
+    return el?.tagName === "SELECT"
+      || el?.getAttribute("role") === "combobox"
+      || el?.getAttribute("aria-haspopup") === "listbox"
+      || el?.getAttribute("aria-haspopup") === "tree"
+      || /select|cascader|dropdown/i.test(`${el?.className || ""} ${el?.parentElement?.className || ""}`);
+  }
+
+  function isTreeLike(el, labelText = "") {
+    const text = `${labelText} ${el?.className || ""} ${el?.parentElement?.className || ""}`;
+    return /cascader|tree|地区|地点|城市|工作地|location|city/i.test(text);
+  }
+
+  function dropdownPopups() {
+    return Array.from(document.querySelectorAll(DROPDOWN_POPUP_SELECTOR)).filter(isVisible);
+  }
+
+  function popupOptions() {
+    return dropdownPopups()
+      .flatMap((popup) => Array.from(popup.querySelectorAll(SELECTABLE_OPTION_SELECTOR)))
+      .filter(isVisible)
+      .map((node) => ({ node, text: cleanLabelText(node.innerText || node.textContent || "") }))
+      .filter((item) => item.text && item.text.length <= 120);
+  }
+
+  function closeDropdowns() {
+    document.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, key: "Escape", code: "Escape" }));
+    document.activeElement?.dispatchEvent?.(new KeyboardEvent("keydown", { bubbles: true, key: "Escape", code: "Escape" }));
+  }
+
+  async function readDynamicOptions(el) {
+    if (!isSelectLike(el)) return fieldOptions(el);
+    const existing = fieldOptions(el);
+    if (existing.length) return existing;
+    const before = document.activeElement;
+    el.click();
+    await sleep(180);
+    const options = popupOptions().map((item) => item.text);
+    closeDropdowns();
+    before?.focus?.();
+    await sleep(40);
+    return [...new Set(options)].slice(0, 80);
+  }
+
+  async function scrollWholePageForScan() {
+    const originalX = window.scrollX;
+    const originalY = window.scrollY;
+    const viewport = Math.max(360, window.innerHeight || 720);
+    const maxY = Math.max(
+      document.body?.scrollHeight || 0,
+      document.documentElement?.scrollHeight || 0
+    );
+    for (let y = 0; y <= maxY; y += Math.floor(viewport * 0.85)) {
+      window.scrollTo(originalX, y);
+      await sleep(70);
+    }
+    window.scrollTo(originalX, originalY);
+    await sleep(80);
+  }
+
+  function semanticLabelText(root, controls) {
+    const labelled = directLabelText(root);
+    if (labelled) return labelled;
+    const first = controls[0];
+    const visual = first ? nearbyVisualLabelText(first) : "";
+    if (visual) return visual;
+    const lines = (root?.innerText || root?.textContent || "")
+      .split(/\n+/)
+      .map((line) => cleanLabelText(line))
+      .filter((line) => line && line.length <= 80);
+    return lines[0] || "";
+  }
+
+  function semanticSlot(labelText, control, controlIndex = 0, controlCount = 1) {
+    const label = cleanLabelText(labelText);
+    const text = label.replace(/\s+/g, "");
+    if (!text) return null;
+    if (/密码|验证码|证件|身份证|护照|薪资|隐私|协议|同意|password|captcha|passport|salary|privacy|terms|agree/i.test(text)) {
+      return { key: "blocked", label: "手动确认", blocked: true, confidence: 0 };
+    }
+    if (/手机|电话|联系电话|mobile|phone|tel/i.test(text)) {
+      return controlCount > 1 && controlIndex === 0
+        ? { key: "phoneCountryCode", label: "手机国家区号", confidence: 0.96 }
+        : { key: "phoneNumber", label: "电话", confidence: 0.97 };
+    }
+    if (/^邮箱|电子邮件|Email|E-mail|mail/i.test(text)) return { key: "email", label: "邮箱", confidence: 0.98 };
+    if (/姓名|真实姓名|中文名|全名|name/i.test(text) && !/获奖|奖项|学校|公司|项目|专业|联系人|紧急/i.test(text)) {
+      return { key: "name", label: "姓名", confidence: 0.98 };
+    }
+    if (/期望工作地点|工作地点|期望地点|期望工作地|城市|地点|location|city/i.test(text)) {
+      return { key: "cityPreference", label: "期望工作地点", confidence: 0.95 };
+    }
+    if (/学校名称|学校|院校|大学|毕业院校|school|university/i.test(text)) return { key: "school", label: "学校名称", confidence: 0.96 };
+    if (/学历类型|培养方式|学习形式/i.test(text)) return { key: "educationType", label: "学历类型", confidence: 0.92 };
+    if (/^学历$|最高学历|学历层次|educationlevel/i.test(text)) return { key: "educationLevel", label: "学历", confidence: 0.96 };
+    if (/^专业|所学专业|major/i.test(text)) return { key: "major", label: "专业", confidence: 0.96 };
+    if (/学院|院系|department|faculty|college/i.test(text)) return { key: "college", label: "学院", confidence: 0.9 };
+    if (/学位|degree/i.test(text)) return { key: "degree", label: "学位", confidence: 0.9 };
+    if (/起止时间|教育时间|在校时间|学习时间|入学时间|开始时间|毕业时间/i.test(text)) {
+      return controlCount > 1 && controlIndex > 0
+        ? { key: "educationEnd", label: "教育结束时间", confidence: 0.9 }
+        : { key: "educationStart", label: "教育起始时间", confidence: 0.9 };
+    }
+    if (/获奖名称|获奖时间|奖项|奖励|荣誉|证书|语言|描述|工作经历|教育经历|实习|项目/i.test(text)) {
+      return null;
+    }
+    return null;
+  }
+
+  function semanticValueFor(profile, key, currentValue = "") {
+    if (key === "phoneCountryCode") return /\+?86/.test(currentValue) ? "" : "+86";
+    if (key === "phoneNumber") return valueFor(profile, "phone").replace(/^\+?86/, "");
+    if (key === "cityPreference") return valueFor(profile, "city") || valueFor(profile, "address");
+    return valueFor(profile, key);
+  }
+
+  function semanticControls(root) {
+    return Array.from(root.querySelectorAll(FIELD_SELECTOR))
+      .filter((item) => !item.disabled && !item.readOnly && isVisible(item))
+      .filter((item) => !item.closest(DROPDOWN_POPUP_SELECTOR));
+  }
+
+  function semanticRoot(el) {
+    let current = el;
+    let fallback = el.closest("label") || el.parentElement || el;
+    for (let depth = 0; current && current !== document.body && depth < 8; depth += 1) {
+      const controls = semanticControls(current);
+      const text = cleanContainerText(current, 360);
+      if (controls.length >= 1 && controls.length <= 2 && text && text.length <= 260) return current;
+      if (controls.length >= 1 && controls.length <= 2 && current.matches?.(FORM_ITEM_SELECTOR)) return current;
+      if (controls.length > 2) return fallback;
+      if (text && text.length <= 160) fallback = current;
+      current = current.parentElement;
+    }
+    return fallback;
+  }
+
+  async function semanticFieldDescriptor(root, control, controls, index, profile, serial) {
+    const label = semanticLabelText(root, controls);
+    const section = nearestSectionText(control);
+    const containerText = cleanContainerText(root, 500);
+    const labelText = compact([section, label, containerText, fieldText(control)].filter(Boolean).join(" "));
+    const match = semanticSlot(label || labelText, control, index, controls.length);
+    const id = ensureFieldId(control, serial);
+    const currentValue = controlValue(control);
+    const options = await readDynamicOptions(control);
+    const inputKind = isSelectLike(control)
+      ? isTreeLike(control, labelText) ? "tree_select" : "choice"
+      : control.tagName === "TEXTAREA" || control.isContentEditable ? "long_text" : inputRole(control, root, index);
+    const alreadySatisfied = match?.key === "phoneCountryCode" && /\+?86/.test(currentValue);
+    const value = match && !match.blocked && !alreadySatisfied ? semanticValueFor(profile, match.key, currentValue) : "";
+    return {
+      id,
+      semantic: true,
+      tag: control.tagName.toLowerCase(),
+      type: control.getAttribute("type") || "",
+      name: control.getAttribute("name") || "",
+      domId: control.id || "",
+      placeholder: control.getAttribute("placeholder") || "",
+      ariaLabel: control.getAttribute("aria-label") || "",
+      required: Boolean(control.required || control.getAttribute("aria-required") === "true" || /\*/.test(labelText)),
+      options,
+      section,
+      label,
+      visualLabel: nearbyVisualLabelText(control),
+      containerText,
+      controlIndex: index,
+      controlCount: controls.length || 1,
+      inputRole: inputKind,
+      labelText: labelText || "未识别字段",
+      key: match?.blocked || alreadySatisfied ? "" : match?.key || "",
+      matchLabel: match?.label || "未匹配",
+      value,
+      currentValue,
+      confidence: match?.confidence || 0,
+      blocked: Boolean(match?.blocked),
+      canFill: Boolean(match && !match.blocked && value),
+      rect: rectData(control.getBoundingClientRect())
+    };
+  }
+
+  async function collectSemanticPageFields(profile) {
+    const controls = Array.from(document.querySelectorAll(FIELD_SELECTOR))
+      .filter((el) => !el.disabled && !el.readOnly && isVisible(el))
+      .filter((el) => !el.closest(DROPDOWN_POPUP_SELECTOR));
+    const roots = [];
+    const seenRoots = new Set();
+    controls.forEach((control) => {
+      const root = semanticRoot(control);
+      if (!root || seenRoots.has(root)) return;
+      seenRoots.add(root);
+      roots.push(root);
+    });
+
+    const fields = [];
+    let serial = 0;
+    for (const root of roots) {
+      const group = semanticControls(root);
+      if (!group.length) continue;
+      const label = semanticLabelText(root, group);
+      const labelText = compact([label, cleanContainerText(root, 260)].join(" "));
+      const isPhone = /手机|电话|mobile|phone|tel/i.test(labelText);
+      const isDateRange = /起止时间|教育时间|在校时间|学习时间/i.test(labelText) && group.length > 1;
+      const chosen = (isPhone || isDateRange)
+        ? group.slice(0, 2)
+        : [group.find((control) => isSelectLike(control)) || group.find((control) => control.tagName === "TEXTAREA") || group[0]];
+      for (const control of chosen) {
+        const index = Math.max(0, group.indexOf(control));
+        fields.push(await semanticFieldDescriptor(root, control, group, index, profile, serial));
+        serial += 1;
+      }
+    }
+    return fields;
+  }
+
+  async function buildDeepPageModel(profile) {
+    clearMarkers();
+    await scrollWholePageForScan();
+    visualTextCache = buildVisualTextCache();
+    const fields = await collectSemanticPageFields(profile);
+    return {
+      strategy: "semantic-full-page",
+      url: location.href,
+      title: document.title,
+      fields,
+      sections: [...new Set(fields.map((field) => field.section).filter(Boolean))].slice(0, 32),
+      labels: visualTextCache.map((item) => ({ text: item.text, rect: rectData(item.rect) })),
+      matchedCount: fields.filter((field) => field.canFill).length,
+      recognizedCount: fields.filter((field) => field.key && !field.blocked).length,
+      blockedCount: fields.filter((field) => field.blocked).length
+    };
+  }
+
   function fieldDescriptor(el, index, profile) {
     const context = fieldContext(el);
     const labelText = compact([
@@ -723,6 +988,53 @@
     return true;
   }
 
+  function optionMatchesValue(optionText, value) {
+    const text = cleanLabelText(optionText).toLowerCase();
+    const normalized = cleanLabelText(value).toLowerCase();
+    return text === normalized || text.includes(normalized) || normalized.includes(text);
+  }
+
+  function clickOptionNode(node) {
+    const checkbox = node.querySelector?.("input[type='checkbox'], [role='checkbox'], .ant-checkbox, .arco-checkbox, .semi-checkbox");
+    const clickable = checkbox || node.querySelector?.("[class*='content'], [class*='label'], [class*='title']") || node;
+    clickable.click();
+  }
+
+  async function expandLikelyTreeParent(value) {
+    const parentHints = /上海|北京|深圳|广州|杭州|成都|南京|苏州|武汉|西安|重庆|天津|厦门|长沙|郑州|青岛|合肥|宁波|佛山|无锡|东莞/i.test(value)
+      ? ["中国大陆", "中国", "Mainland China", "China"]
+      : [];
+    for (const hint of parentHints) {
+      const parent = popupOptions().find((item) => item.text.includes(hint));
+      if (!parent) continue;
+      const arrow = parent.node.querySelector?.("[class*='arrow'], [class*='expand'], svg") || parent.node;
+      arrow.click();
+      await sleep(180);
+      if (popupOptions().some((item) => optionMatchesValue(item.text, value))) return true;
+    }
+    return false;
+  }
+
+  async function fillTreeSelect(el, value) {
+    const current = controlValue(el);
+    if (current && (current.includes(value) || value.includes(current))) return true;
+    el.click();
+    await sleep(180);
+    let option = popupOptions().find((item) => optionMatchesValue(item.text, value));
+    if (!option) {
+      await expandLikelyTreeParent(value);
+      option = popupOptions().find((item) => optionMatchesValue(item.text, value));
+    }
+    if (!option) {
+      closeDropdowns();
+      return false;
+    }
+    clickOptionNode(option.node);
+    await sleep(120);
+    closeDropdowns();
+    return true;
+  }
+
   async function fill(fieldsOrIds, profile) {
     let filled = 0;
     const aiFields = Array.isArray(fieldsOrIds) && typeof fieldsOrIds[0] === "object";
@@ -749,11 +1061,15 @@
       if (field.blocked || field.sensitive) continue;
       const value = cleanProfileValue(field.value);
       if (!value) continue;
+      if (field.inputRole === "tree_select") {
+        if (await fillTreeSelect(el, value)) filled += 1;
+        continue;
+      }
       if (el.tagName === "SELECT") {
         if (fillSelect(el, value)) filled += 1;
         continue;
       }
-      if (el.getAttribute("role") === "combobox" || el.getAttribute("aria-haspopup") === "listbox") {
+      if (field.inputRole === "choice" || el.getAttribute("role") === "combobox" || el.getAttribute("aria-haspopup") === "listbox") {
         if (await fillComboBox(el, value)) filled += 1;
         continue;
       }
@@ -1131,6 +1447,12 @@
     if (message?.type === "BCV_PAGE_MODEL") {
       clearMarkers();
       sendResponse(buildPageModel(message.profile || {}));
+      return true;
+    }
+    if (message?.type === "BCV_DEEP_PAGE_MODEL") {
+      buildDeepPageModel(message.profile || {})
+        .then(sendResponse)
+        .catch((error) => sendResponse({ strategy: "semantic-full-page", fields: [], error: error.message }));
       return true;
     }
     if (message?.type === "BCV_MARK_FIELDS") {
