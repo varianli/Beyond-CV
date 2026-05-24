@@ -1,5 +1,5 @@
 (function () {
-  const CONTENT_VERSION = "0.1.8";
+  const CONTENT_VERSION = "0.2.0";
   if (window.__beyondCvContentVersion === CONTENT_VERSION) return;
   window.__beyondCvContentVersion = CONTENT_VERSION;
 
@@ -48,6 +48,43 @@
     /期望薪资|薪水|salary|compensation/i,
     /政治|宗教|婚姻|家庭|gender|marital|religion/i
   ];
+
+  const FORM_ITEM_SELECTOR = [
+    ".ant-form-item",
+    ".arco-form-item",
+    ".atsx-form-item",
+    ".el-form-item",
+    ".semi-form-field",
+    ".form-item",
+    ".form-group",
+    ".field",
+    "[class*='form-item']",
+    "[class*='FormItem']",
+    "[class*='formItem']",
+    "[class*='field']",
+    "[class*='Field']"
+  ].join(",");
+
+  const SECTION_TITLE_SELECTOR = [
+    "h1",
+    "h2",
+    "h3",
+    "h4",
+    "legend",
+    "[class*='section-title']",
+    "[class*='SectionTitle']",
+    "[class*='sectionTitle']",
+    "[class*='module-title']",
+    "[class*='ModuleTitle']",
+    "[class*='block-title']",
+    "[class*='BlockTitle']",
+    "[class*='card-title']",
+    "[class*='CardTitle']",
+    "[class*='panel-title']",
+    "[class*='PanelTitle']",
+    "[class*='title']",
+    "[class*='Title']"
+  ].join(",");
 
   const FALLBACK_PROFILE = {
     name: "",
@@ -226,6 +263,96 @@
     const text = textOf(container, 220);
     if (text && text.length <= 220) return text;
     return "";
+  }
+
+  function cleanContainerText(root, limit = 360) {
+    if (!root) return "";
+    const clone = root.cloneNode(true);
+    clone.querySelectorAll("input, textarea, select, option, [role='combobox'], [aria-haspopup='listbox'], [contenteditable='true'], script, style, svg, .bcv-field-marker").forEach((node) => node.remove());
+    return compact(clone.innerText || clone.textContent || "").slice(0, limit);
+  }
+
+  function fieldRoot(el) {
+    let current = el;
+    for (let depth = 0; current && current !== document.body && depth < 8; depth += 1) {
+      if (current.matches?.(FORM_ITEM_SELECTOR)) {
+        const text = cleanContainerText(current, 520);
+        if (text && text.length <= 520) return current;
+      }
+      current = current.parentElement;
+    }
+    return el.closest("label") || el.parentElement;
+  }
+
+  function directLabelText(root) {
+    if (!root) return "";
+    const label = root.querySelector([
+      "label",
+      "[class*='label']",
+      "[class*='Label']",
+      "[class*='form-label']",
+      "[class*='FormLabel']"
+    ].join(","));
+    const text = textOf(label, 120);
+    if (text) return text;
+    return cleanContainerText(root, 160).split(/\s{2,}|：|:/)[0]?.trim().slice(0, 80) || "";
+  }
+
+  function nearestSectionText(el) {
+    const rect = el.getBoundingClientRect();
+    const domTitles = Array.from(document.querySelectorAll(SECTION_TITLE_SELECTOR))
+      .filter(isVisible)
+      .map((node) => ({ text: textOf(node, 80), rect: node.getBoundingClientRect(), node }))
+      .filter((item) => item.text && item.text.length <= 80 && item.rect.bottom <= rect.top + 8);
+    const visualTitles = visualTextCache
+      .map((item) => {
+        const style = window.getComputedStyle(item.parent);
+        return {
+          text: item.text,
+          rect: item.rect,
+          scoreBoost: (parseFloat(style.fontSize) >= 16 || Number(style.fontWeight) >= 600) ? -60 : 0
+        };
+      })
+      .filter((item) => item.text.length <= 48 && item.rect.bottom <= rect.top + 8)
+      .filter((item) => /信息|经历|经歴|教育|工作|实习|项目|校园|求职|申请|附件|问题|简历|Resume|Experience|Education|Basic|Profile/i.test(item.text));
+    return [...domTitles, ...visualTitles]
+      .map((item) => ({
+        text: item.text,
+        score: (rect.top - item.rect.bottom) + Math.abs(rect.left - item.rect.left) * 0.08 + (item.scoreBoost || 0)
+      }))
+      .sort((a, b) => a.score - b.score)[0]?.text || "";
+  }
+
+  function controlSiblings(root) {
+    if (!root) return [];
+    return Array.from(root.querySelectorAll(FIELD_SELECTOR))
+      .filter((item) => !item.disabled && !item.readOnly && isVisible(item));
+  }
+
+  function inputRole(el, root, index) {
+    const value = compact(el.value || el.textContent || "");
+    const text = `${directLabelText(root)} ${cleanContainerText(root, 220)} ${el.getAttribute("placeholder") || ""} ${el.getAttribute("name") || ""} ${el.id || ""}`;
+    if (/^\+?\d{1,4}$/.test(value) && /手机|电话|mobile|phone|tel/i.test(text)) return "phone_country_code";
+    if (index > 0 && /手机|电话|mobile|phone|tel/i.test(text)) return "phone_number";
+    if (el.tagName === "SELECT" || el.getAttribute("role") === "combobox" || el.getAttribute("aria-haspopup") === "listbox") return "choice";
+    if (el.tagName === "TEXTAREA" || el.isContentEditable) return "long_text";
+    return "text";
+  }
+
+  function fieldContext(el) {
+    const root = fieldRoot(el);
+    const siblings = controlSiblings(root);
+    const controlIndex = Math.max(0, siblings.indexOf(el));
+    const containerText = cleanContainerText(root, 420);
+    const label = directLabelText(root) || nearbyVisualLabelText(el).split(" ").slice(0, 4).join(" ");
+    return {
+      section: nearestSectionText(el),
+      label,
+      containerText,
+      controlIndex,
+      controlCount: siblings.length || 1,
+      inputRole: inputRole(el, root, controlIndex)
+    };
   }
 
   function fieldText(el) {
@@ -426,7 +553,13 @@
   }
 
   function fieldDescriptor(el, index, profile) {
-    const labelText = fieldText(el);
+    const context = fieldContext(el);
+    const labelText = compact([
+      context.section ? `栏目:${context.section}` : "",
+      context.label ? `字段:${context.label}` : "",
+      context.containerText ? `表单项:${context.containerText}` : "",
+      fieldText(el)
+    ].filter(Boolean).join(" "));
     const match = classifyField(el, labelText);
     const id = ensureFieldId(el, index);
     const value = match && !match.blocked ? valueFor(profile, match.key) : "";
@@ -440,6 +573,12 @@
       ariaLabel: el.getAttribute("aria-label") || "",
       required: Boolean(el.required || el.getAttribute("aria-required") === "true" || /\*/.test(labelText)),
       options: fieldOptions(el),
+      section: context.section,
+      label: context.label,
+      containerText: context.containerText,
+      controlIndex: context.controlIndex,
+      controlCount: context.controlCount,
+      inputRole: context.inputRole,
       labelText: labelText || "未识别字段",
       key: match?.key || "",
       matchLabel: match?.label || "未匹配",
@@ -465,6 +604,7 @@
       url: location.href,
       title: document.title,
       fields,
+      sections: [...new Set(fields.map((field) => field.section).filter(Boolean))].slice(0, 24),
       labels: visualTextCache.map((item) => ({ text: item.text, rect: rectData(item.rect) })),
       matchedCount: fields.filter((field) => field.canFill).length,
       recognizedCount: fields.filter((field) => field.key && !field.blocked).length,

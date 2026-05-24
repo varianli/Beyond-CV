@@ -337,12 +337,19 @@ function pageModelForAi(model) {
   return {
     url: model.url,
     title: model.title,
+    sections: model.sections || [],
     fields: (model.fields || []).slice(0, 80).map((field) => ({
       id: field.id,
       tag: field.tag,
       type: field.type,
       name: field.name,
       domId: field.domId,
+      section: field.section || "",
+      label: field.label || "",
+      containerText: trimForAi(field.containerText || "", 500),
+      controlIndex: field.controlIndex || 0,
+      controlCount: field.controlCount || 1,
+      inputRole: field.inputRole || "",
       labelText: trimForAi(field.labelText, 500),
       placeholder: field.placeholder,
       ariaLabel: field.ariaLabel,
@@ -360,8 +367,11 @@ function aiScanPrompt(model, profileData) {
 
 硬性规则：
 - 只能使用“资料库”里已经存在的信息，不要猜测、不要编造。
+- 识别字段时优先看 section、label、containerText、controlIndex 和 inputRole；不要只看 input 的 placeholder/name/id。
+- 每个栏目要分别理解：基本信息只填基础联系方式，工作经历/教育经历只填对应经历字段，开放题/BQ 才使用长文本经历素材。
 - 不要把邮箱填到工作地点、不要把姓名填到手机号、不要用字段当前值作为候选人事实。
 - 如果字段是手机号国家区号且已显示 +86，可以跳过；手机号输入框才填手机号主体。
+- 如果同一个表单项有多个控件，例如“手机号码”的国家区号和号码主体，只给号码主体字段返回手机号，国家区号字段 value 留空。
 - select/combobox 字段必须优先匹配 options 中已有选项；没有合适选项就留空。
 - 不填写密码、验证码、证件号、身份证/护照、薪资、政治宗教、婚育、隐私协议/同意勾选等敏感或协议字段。
 - 工作经历、教育经历、开放题、BQ、动机类字段可以从完整资料库选择最相关真实经历；若缺少事实，留空。
