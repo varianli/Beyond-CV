@@ -6,6 +6,7 @@ const BCV_SUPABASE_URL = "https://fsdashpviavdlxyicibr.supabase.co";
 const BCV_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZzZGFzaHB2aWF2ZGx4eWljaWJyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg1NzI3MTksImV4cCI6MjA5NDE0ODcxOX0.vsPRG6YJTUVenmLZsD-txUtIFMuMvxR3RdMtFGZVc6w";
 const BCV_SYNC_ENDPOINT = `${BCV_SUPABASE_URL}/functions/v1/bcv-profile-sync`;
 const BCV_AUTH_ENDPOINT = `${BCV_SUPABASE_URL}/auth/v1`;
+const BCV_APPLICATIONS_KEY = "applicationRecords";
 
 async function getActiveTab() {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -34,6 +35,88 @@ async function sendToTab(type, payload = {}) {
       files: ["content.js"]
     });
     return chrome.tabs.sendMessage(tab.id, { type, ...payload });
+  }
+}
+
+function compact(text) {
+  return String(text || "").replace(/\s+/g, " ").trim();
+}
+
+function guessRoleFromTitle(title) {
+  return compact(title.match(/([^｜|_\-—–,，。]{2,36}(?:实习生|管培生|分析师|工程师|设计师|产品经理|运营|助理|专员|顾问|Intern|Analyst|Engineer|Designer|Manager|Assistant|Specialist|Consultant|Trainee))/i)?.[1] || title.split(/[-｜|_]/)[0] || "");
+}
+
+function guessCompanyFromUrl(url) {
+  try {
+    const host = new URL(url).hostname;
+    return host.split(".").filter((part) => !/^(www|jobs|career|careers|campus|apply|ats|hr)$/i.test(part))[0] || "";
+  } catch (_error) {
+    return "";
+  }
+}
+
+function applicationId(record) {
+  return `${record.company || "company"}-${record.role || "role"}-${record.url || ""}`
+    .toLowerCase()
+    .replace(/\W+/g, "-")
+    .slice(0, 120);
+}
+
+async function loadApplicationDraft() {
+  const tab = await getActiveTab();
+  $("applicationPageHint").textContent = tab?.title || "当前页面";
+  let context = {};
+  try {
+    context = await sendToTab("BCV_APPLICATION_CONTEXT");
+  } catch (_error) {
+    context = {};
+  }
+  const company = compact(context.company) || guessCompanyFromUrl(tab?.url || "");
+  const role = compact(context.role) || guessRoleFromTitle(tab?.title || "");
+  $("applicationCompanyInput").value = company;
+  $("applicationRoleInput").value = role;
+
+  const stored = await chrome.storage.local.get(BCV_APPLICATIONS_KEY);
+  const records = Array.isArray(stored[BCV_APPLICATIONS_KEY]) ? stored[BCV_APPLICATIONS_KEY] : [];
+  $("applicationCount").textContent = String(records.length);
+  $("applicationStatus").textContent = records.length ? `已记录 ${records.length} 条投递。` : "记录后会同步到 Beyond CV 投递管理。";
+}
+
+async function recordApplication() {
+  const tab = await getActiveTab();
+  const company = compact($("applicationCompanyInput").value);
+  const role = compact($("applicationRoleInput").value);
+  if (!company || !role) {
+    $("applicationStatus").textContent = "请先确认公司和岗位。";
+    return;
+  }
+  $("recordApplicationButton").disabled = true;
+  try {
+    const stored = await chrome.storage.local.get(BCV_APPLICATIONS_KEY);
+    const records = Array.isArray(stored[BCV_APPLICATIONS_KEY]) ? stored[BCV_APPLICATIONS_KEY] : [];
+    const now = new Date().toISOString();
+    const record = {
+      id: applicationId({ company, role, url: tab?.url }),
+      company,
+      role,
+      status: $("applicationStatusInput").value,
+      url: tab?.url || "",
+      title: tab?.title || "",
+      source: "extension",
+      appliedAt: now,
+      updatedAt: now
+    };
+    const existingIndex = records.findIndex((item) => item.id === record.id || (item.url && item.url === record.url));
+    const next = existingIndex >= 0
+      ? records.map((item, index) => index === existingIndex ? { ...item, ...record, appliedAt: item.appliedAt || record.appliedAt } : item)
+      : [record, ...records];
+    await chrome.storage.local.set({ [BCV_APPLICATIONS_KEY]: next.slice(0, 200) });
+    $("applicationCount").textContent = String(next.length);
+    $("applicationStatus").textContent = `已记录：${company} · ${role}`;
+  } catch (error) {
+    $("applicationStatus").textContent = `记录失败：${error.message}`;
+  } finally {
+    $("recordApplicationButton").disabled = false;
   }
 }
 
@@ -570,10 +653,12 @@ async function directFillInPage(profileData) {
 
 document.addEventListener("DOMContentLoaded", async () => {
   await loadProfile();
+  await loadApplicationDraft();
   $("scanButton").addEventListener("click", scanCurrentPage);
   $("fillButton").addEventListener("click", fillSelectedFields);
   $("clearButton").addEventListener("click", clearMarks);
   $("importProfileButton").addEventListener("click", importProfile);
+  $("recordApplicationButton").addEventListener("click", recordApplication);
   $("loginAccountButton").addEventListener("click", loginAccount);
   $("logoutAccountButton").addEventListener("click", logoutAccount);
   $("cloudSyncButton").addEventListener("click", syncFromCloud);

@@ -660,24 +660,17 @@
 
           <div class="mt-4 grid gap-4 lg:grid-cols-[1.05fr_0.95fr]">
             <div class="glass-panel rounded-[14px] p-5">
-              <div class="mb-4 flex items-center justify-between">
-                <h3 class="font-semibold text-slate-950">最近岗位材料</h3>
-                <button class="quiet-button">全部</button>
-              </div>
-              <div class="space-y-3">
-                <div class="soft-panel flex items-center justify-between gap-3 rounded-[10px] p-3">
-                  <div>
-                    <div class="text-sm font-semibold text-slate-900">目标岗位 A - 实习 / 校招岗位</div>
-                    <div class="mt-1 text-xs text-slate-500">已生成：字段短答、BQ、适配简历建议</div>
-                  </div>
-                  <span class="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">已生成</span>
+              <div class="mb-4 flex items-center justify-between gap-3">
+                <div>
+                  <h3 class="font-semibold text-slate-950">投递管理</h3>
+                  <p id="applicationSyncStatus" class="mt-1 text-xs font-semibold text-slate-500">等待插件同步投递记录</p>
                 </div>
-                <div class="soft-panel flex items-center justify-between gap-3 rounded-[10px] p-3">
-                  <div>
-                    <div class="text-sm font-semibold text-slate-900">目标岗位 B - 全职 / 实习岗位</div>
-                    <div class="mt-1 text-xs text-slate-500">最近编辑：今天 10:18</div>
-                  </div>
-                  <span class="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">草稿</span>
+                <button id="refreshApplicationsButton" class="quiet-button" type="button">刷新</button>
+              </div>
+              <div id="applicationStats" class="mb-3 grid gap-2 sm:grid-cols-3"></div>
+              <div id="applicationRecordsList" class="space-y-3">
+                <div class="rounded-[10px] border border-dashed border-slate-200 bg-white/70 p-4 text-sm leading-6 text-slate-500">
+                  在招聘页面打开插件，点击「记录本次投递」后，这里会自动显示公司、岗位、状态和投递链接。
                 </div>
               </div>
             </div>
@@ -1328,7 +1321,8 @@
       density: "standard",
       pluginConnected: false,
       currentJD: null,
-      generatedMaterials: {}
+      generatedMaterials: {},
+      applications: []
     };
 
     const BCV_SUPABASE_URL = "https://fsdashpviavdlxyicibr.supabase.co";
@@ -1338,6 +1332,7 @@
     const BCV_SYNC_TOKEN_KEY = "beyondCvSyncToken";
     const BCV_AUTH_SESSION_KEY = "beyondCvAuthSession";
     const BCV_AI_CONFIG_KEY = "beyondCvAiConfig";
+    const BCV_APPLICATIONS_KEY = "beyondCvApplicationRecords";
     const BCV_AI_DEFAULT_CONFIG = {
       baseUrl: "https://api.deepseek.com",
       model: "deepseek-v4-flash",
@@ -2049,13 +2044,178 @@
     }
 
     function escapeHtml(text) {
-      return text.replace(/[&<>"']/g, (char) => ({
+      return String(text || "").replace(/[&<>"']/g, (char) => ({
         "&": "&amp;",
         "<": "&lt;",
         ">": "&gt;",
         '"': "&quot;",
         "'": "&#039;"
       })[char]);
+    }
+
+    function normalizeApplication(record = {}) {
+      const now = new Date().toISOString();
+      const company = String(record.company || "").trim();
+      const role = String(record.role || "").trim();
+      const url = String(record.url || "").trim();
+      return {
+        id: String(record.id || `${company}-${role}-${url}`).trim() || crypto.randomUUID?.() || String(Date.now()),
+        company,
+        role,
+        status: String(record.status || "已投递").trim(),
+        url,
+        title: String(record.title || "").trim(),
+        source: String(record.source || "local").trim(),
+        appliedAt: record.appliedAt || record.updatedAt || now,
+        updatedAt: record.updatedAt || record.appliedAt || now
+      };
+    }
+
+    function readApplicationRecords() {
+      try {
+        const records = JSON.parse(safeStorageGet(BCV_APPLICATIONS_KEY) || "[]");
+        return Array.isArray(records) ? records.map(normalizeApplication) : [];
+      } catch (_error) {
+        return [];
+      }
+    }
+
+    function writeApplicationRecords(records) {
+      const normalized = records.map(normalizeApplication)
+        .filter((item) => item.company || item.role || item.url)
+        .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+      state.applications = normalized;
+      safeStorageSet(BCV_APPLICATIONS_KEY, JSON.stringify(normalized));
+      renderApplicationTracker();
+    }
+
+    function mergeApplicationRecords(records) {
+      const merged = new Map();
+      [...state.applications, ...records.map(normalizeApplication)].forEach((record) => {
+        const key = record.id || record.url;
+        const existing = merged.get(key);
+        if (!existing || new Date(record.updatedAt) >= new Date(existing.updatedAt)) {
+          merged.set(key, record);
+        }
+      });
+      return Array.from(merged.values());
+    }
+
+    function applicationStatusClass(status) {
+      if (/Offer/i.test(status)) return "bg-emerald-50 text-emerald-700";
+      if (/面试|笔试/.test(status)) return "bg-violet-50 text-violet-700";
+      if (/未通过|拒/.test(status)) return "bg-rose-50 text-rose-700";
+      if (/准备|草稿/.test(status)) return "bg-blue-50 text-blue-700";
+      return "bg-slate-100 text-slate-700";
+    }
+
+    function formatApplicationDate(value) {
+      if (!value) return "";
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return "";
+      return `${date.getMonth() + 1}/${date.getDate()} ${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+    }
+
+    function applicationHost(url) {
+      try {
+        return new URL(url).hostname.replace(/^www\./, "");
+      } catch (_error) {
+        return "手动记录";
+      }
+    }
+
+    function renderApplicationStats(records = state.applications) {
+      const total = records.length;
+      const interview = records.filter((item) => /面试|笔试|Offer/i.test(item.status)).length;
+      const offer = records.filter((item) => /Offer/i.test(item.status)).length;
+      const stats = [
+        ["总投递", total],
+        ["流程中", interview],
+        ["Offer", offer]
+      ];
+      $("applicationStats").innerHTML = stats.map(([label, value]) => `
+        <div class="rounded-[9px] bg-white/75 p-3">
+          <div class="text-xs font-semibold text-slate-500">${label}</div>
+          <div class="mt-1 text-xl font-semibold text-slate-950">${value}</div>
+        </div>
+      `).join("");
+    }
+
+    function renderApplicationTracker() {
+      const records = state.applications;
+      renderApplicationStats(records);
+      const list = $("applicationRecordsList");
+      if (!list) return;
+      if (!records.length) {
+        list.innerHTML = `
+          <div class="rounded-[10px] border border-dashed border-slate-200 bg-white/70 p-4 text-sm leading-6 text-slate-500">
+            在招聘页面打开插件，点击「记录本次投递」后，这里会自动显示公司、岗位、状态和投递链接。
+          </div>
+        `;
+        return;
+      }
+      list.innerHTML = records.slice(0, 8).map((record) => {
+        const title = [record.company, record.role].filter(Boolean).join(" · ") || record.title || "未命名投递";
+        return `
+          <div class="soft-panel rounded-[10px] p-3">
+            <div class="flex items-start justify-between gap-3">
+              <div class="min-w-0">
+                <div class="truncate text-sm font-semibold text-slate-900">${escapeHtml(title)}</div>
+                <div class="mt-1 text-xs text-slate-500">${escapeHtml(formatApplicationDate(record.updatedAt))} · ${escapeHtml(applicationHost(record.url))}</div>
+              </div>
+              <select class="field-input min-h-[32px] max-w-[96px] px-2 text-xs" data-application-id="${escapeHtml(record.id)}" aria-label="投递状态">
+                ${["准备中", "已投递", "笔试", "面试", "Offer", "未通过"].map((status) => `<option value="${status}" ${status === record.status ? "selected" : ""}>${status}</option>`).join("")}
+              </select>
+            </div>
+            <div class="mt-2 flex items-center justify-between gap-3">
+              <span class="rounded-full px-2.5 py-1 text-xs font-semibold ${applicationStatusClass(record.status)}">${escapeHtml(record.status)}</span>
+              ${record.url ? `<a class="text-xs font-semibold text-blue-700" href="${escapeHtml(record.url)}" target="_blank" rel="noreferrer">打开页面</a>` : ""}
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    function requestApplicationRecords() {
+      $("applicationSyncStatus").textContent = "正在向插件同步投递记录...";
+      window.postMessage({ source: "beyond-cv-page", type: "BCV_GET_APPLICATION_RECORDS" }, "*");
+      window.setTimeout(() => {
+        $("applicationSyncStatus").textContent = state.applications.length
+          ? `显示本地 ${state.applications.length} 条投递记录`
+          : "打开插件记录投递后，这里会自动更新。";
+      }, 900);
+    }
+
+    function updateApplicationStatus(id, status) {
+      const records = state.applications.map((record) => (
+        record.id === id ? { ...record, status, updatedAt: new Date().toISOString() } : record
+      ));
+      writeApplicationRecords(records);
+      const record = records.find((item) => item.id === id);
+      if (record) {
+        window.postMessage({ source: "beyond-cv-page", type: "BCV_UPSERT_APPLICATION_RECORD", record }, "*");
+      }
+    }
+
+    function bindApplicationTracker() {
+      state.applications = readApplicationRecords();
+      renderApplicationTracker();
+      $("refreshApplicationsButton")?.addEventListener("click", requestApplicationRecords);
+      $("applicationRecordsList")?.addEventListener("change", (event) => {
+        const select = event.target.closest("[data-application-id]");
+        if (!select) return;
+        updateApplicationStatus(select.dataset.applicationId, select.value);
+      });
+      window.addEventListener("message", (event) => {
+        if (event.source !== window || event.data?.source !== "beyond-cv-extension") return;
+        if (event.data.type === "BCV_APPLICATION_RECORDS") {
+          writeApplicationRecords(mergeApplicationRecords(Array.isArray(event.data.records) ? event.data.records : []));
+          $("applicationSyncStatus").textContent = state.applications.length
+            ? `已同步 ${state.applications.length} 条投递记录`
+            : "暂无投递记录";
+        }
+      });
+      requestApplicationRecords();
     }
 
     function bindEditor() {
@@ -3425,6 +3585,7 @@ ${JSON.stringify(details, null, 2)}
       bindRemoveItems();
       bindSkillRows();
       bindFamilyInfo();
+      bindApplicationTracker();
       bindAiSettings();
       bindSmartPaste();
       bindExports();

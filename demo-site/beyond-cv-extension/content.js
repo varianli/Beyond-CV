@@ -3,6 +3,7 @@
   if (window.__beyondCvContentVersion === CONTENT_VERSION) return;
   window.__beyondCvContentVersion = CONTENT_VERSION;
 
+  const APPLICATIONS_KEY = "applicationRecords";
   const MARKER_CLASS = "bcv-field-marker";
   const FIELD_SELECTOR = [
     "input:not([type='hidden']):not([type='submit']):not([type='button']):not([type='reset']):not([type='checkbox']):not([type='radio']):not([type='file'])",
@@ -696,6 +697,99 @@
     };
   }
 
+  function guessRoleFromText(text) {
+    const source = compact(text);
+    const roleMatch = source.match(/([^｜|_\-—–,，。]{2,36}(?:实习生|管培生|分析师|工程师|设计师|产品经理|运营|助理|专员|顾问|Intern|Analyst|Engineer|Designer|Manager|Assistant|Specialist|Consultant|Trainee))/i);
+    return compact(roleMatch?.[1] || "");
+  }
+
+  function guessCompanyFromText(text) {
+    const source = compact(text);
+    const companyMatch = source.match(/([\u4e00-\u9fa5A-Za-z0-9]{2,24}(?:公司|集团|科技|电商|银行|证券|基金|咨询|事务所|Company|Group|Bank|Capital|Securities|Consulting|Technology))/i);
+    return compact(companyMatch?.[1] || "");
+  }
+
+  function applicationContext() {
+    const headings = Array.from(document.querySelectorAll("h1, h2, h3, [class*='title'], [class*='Title']"))
+      .filter(isVisible)
+      .map((item) => textOf(item, 120))
+      .filter(Boolean)
+      .slice(0, 8);
+    const title = document.title || "";
+    const combined = [title, ...headings].join(" ");
+    const hostParts = location.hostname.split(".").filter((part) => !/^(www|jobs|career|careers|campus|apply|ats|hr)$/i.test(part));
+    const hostCompany = hostParts[0] || "";
+    return {
+      url: location.href,
+      title,
+      role: guessRoleFromText(combined),
+      company: guessCompanyFromText(combined) || hostCompany,
+      headings
+    };
+  }
+
+  function normalizeApplicationRecord(record) {
+    const now = new Date().toISOString();
+    const company = compact(record?.company).slice(0, 80);
+    const role = compact(record?.role).slice(0, 120);
+    const url = compact(record?.url || location.href).slice(0, 1000);
+    return {
+      id: compact(record?.id) || `${company || "unknown"}-${role || "role"}-${url}`.toLowerCase().replace(/\W+/g, "-").slice(0, 120),
+      company,
+      role,
+      status: compact(record?.status || "已投递").slice(0, 24),
+      url,
+      title: compact(record?.title || document.title).slice(0, 160),
+      source: "extension",
+      appliedAt: record?.appliedAt || now,
+      updatedAt: now
+    };
+  }
+
+  async function getApplicationRecords() {
+    const stored = await chrome.storage.local.get(APPLICATIONS_KEY);
+    return Array.isArray(stored[APPLICATIONS_KEY]) ? stored[APPLICATIONS_KEY] : [];
+  }
+
+  async function upsertApplicationRecord(record) {
+    const normalized = normalizeApplicationRecord(record);
+    const records = await getApplicationRecords();
+    const existingIndex = records.findIndex((item) => item.id === normalized.id || (item.url && item.url === normalized.url));
+    const next = existingIndex >= 0
+      ? records.map((item, index) => index === existingIndex ? { ...item, ...normalized, appliedAt: item.appliedAt || normalized.appliedAt } : item)
+      : [normalized, ...records];
+    await chrome.storage.local.set({ [APPLICATIONS_KEY]: next.slice(0, 200) });
+    return next.slice(0, 200);
+  }
+
+  function postApplicationRecords(records) {
+    window.postMessage({
+      source: "beyond-cv-extension",
+      type: "BCV_APPLICATION_RECORDS",
+      records
+    }, "*");
+  }
+
+  async function syncApplicationRecordsToPage() {
+    postApplicationRecords(await getApplicationRecords());
+  }
+
+  window.addEventListener("message", (event) => {
+    if (event.source !== window || event.data?.source !== "beyond-cv-page") return;
+    if (event.data.type === "BCV_GET_APPLICATION_RECORDS") {
+      syncApplicationRecordsToPage();
+    }
+    if (event.data.type === "BCV_UPSERT_APPLICATION_RECORD") {
+      upsertApplicationRecord(event.data.record || {}).then(postApplicationRecords);
+    }
+  });
+
+  chrome.storage.onChanged.addListener((changes, areaName) => {
+    if (areaName === "local" && changes[APPLICATIONS_KEY]) {
+      postApplicationRecords(changes[APPLICATIONS_KEY].newValue || []);
+    }
+  });
+
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     if (message?.type === "BCV_SCAN") {
       sendResponse(scan(message.profile || {}));
@@ -721,6 +815,10 @@
     }
     if (message?.type === "BCV_EXPORT_PROFILE") {
       sendResponse({ profile: exportBeyondCvProfile() });
+      return true;
+    }
+    if (message?.type === "BCV_APPLICATION_CONTEXT") {
+      sendResponse(applicationContext());
       return true;
     }
     return false;

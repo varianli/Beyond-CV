@@ -27,6 +27,32 @@
       <p id="scanStatus" class="muted">打开招聘网站后点击扫描，插件会识别可填字段。</p>
     </section>
 
+    <section class="panel application">
+      <div class="row">
+        <div>
+          <p class="label">投递记录</p>
+          <p id="applicationPageHint" class="page-title">当前页面</p>
+        </div>
+        <span id="applicationCount" class="pill">0</span>
+      </div>
+      <div class="sync-grid application-grid">
+        <input id="applicationCompanyInput" class="sync-input" placeholder="公司" />
+        <input id="applicationRoleInput" class="sync-input" placeholder="岗位" />
+      </div>
+      <div class="sync-grid application-grid">
+        <select id="applicationStatusInput" class="sync-input">
+          <option value="已投递">已投递</option>
+          <option value="准备中">准备中</option>
+          <option value="笔试">笔试</option>
+          <option value="面试">面试</option>
+          <option value="Offer">Offer</option>
+          <option value="未通过">未通过</option>
+        </select>
+        <button id="recordApplicationButton" class="secondary" type="button">记录本次投递</button>
+      </div>
+      <p id="applicationStatus" class="sync-status">记录后会同步到 Beyond CV 投递管理。</p>
+    </section>
+
     <section class="panel profile">
       <div class="row">
         <div>

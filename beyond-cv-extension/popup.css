@@ -72,6 +72,10 @@ button:disabled {
   margin-bottom: 8px;
 }
 
+.application-grid {
+  margin-top: 10px;
+}
+
 .sync-status {
   margin: 0 0 8px;
   color: var(--muted);
