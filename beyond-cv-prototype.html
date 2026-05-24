@@ -1935,6 +1935,86 @@
       $("logoutAccountButton").disabled = !email;
     }
 
+    function normalizeCloudItem(item = {}) {
+      return {
+        included: item.included !== false,
+        org: item.org || item.school || item.company || "",
+        city: item.city || "",
+        role: item.role || item.degree || item.title || "",
+        date: item.date || item.time || "",
+        detail: item.detail || item.description || ""
+      };
+    }
+
+    function cloudItems(resume = {}, type) {
+      const knowledgeItems = resume.knowledgeBase?.[type];
+      const directItems = resume[type];
+      const source = Array.isArray(knowledgeItems) && knowledgeItems.length ? knowledgeItems : directItems;
+      return Array.isArray(source) ? source.map(normalizeCloudItem) : [];
+    }
+
+    function applyCloudResume(resume = {}) {
+      const profile = resume.profile || resume.knowledgeBase?.profile || {};
+      const contact = profile.contact || "";
+      const email = profile.email || contact.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0] || "";
+      const phone = profile.phone || contact.match(/(?:\+?86[\s-]?)?1[3-9]\d{9}/)?.[0]?.replace(/^(\+?86)?\s*/, "") || "";
+      $("candidateName").value = profile.name || "";
+      $("candidatePhone").value = phone || "";
+      $("candidateEmail").value = email || "";
+      $("candidateAddress").value = profile.address || profile.city || "";
+      replaceItems("education", cloudItems(resume, "education"));
+      replaceItems("experience", cloudItems(resume, "experience"));
+      replaceItems("campus", cloudItems(resume, "campus"));
+      const skills = resume.skills || resume.knowledgeBase?.skills || {};
+      setSkillFieldValue("skillsLanguages", skills.languages || "");
+      setSkillFieldValue("skillsTechnical", skills.technical || "");
+      setSkillFieldValue("skillsCerts", skills.certs || "");
+      setSkillFieldValue("skillsActivities", skills.activities || "");
+      setSkillFieldValue("skillsInterests", skills.interests || "");
+      if (resume.smartPasteText || resume.knowledgeBase?.rawText) {
+        $("smartPasteText").value = resume.smartPasteText || resume.knowledgeBase.rawText || "";
+      }
+      flashParsedFields();
+      renderPreview();
+    }
+
+    function applyCloudProfile(profile = {}) {
+      $("candidateName").value = profile.name || "";
+      $("candidatePhone").value = profile.phone || "";
+      $("candidateEmail").value = profile.email || "";
+      $("candidateAddress").value = profile.address || profile.city || "";
+      renderPreview();
+    }
+
+    async function syncFromCloudToEditor({ reason = "manual" } = {}) {
+      const token = safeStorageGet(BCV_SYNC_TOKEN_KEY) || "";
+      const response = await fetch(BCV_SYNC_ENDPOINT, {
+        method: "POST",
+        headers: authHeaders(),
+        body: JSON.stringify({ action: "get", token })
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "同步失败");
+      if (result.token || token) safeStorageSet(BCV_SYNC_TOKEN_KEY, result.token || token);
+      refreshCloudSyncBox();
+      const resume = result.resume || result.data?.resume || result.sync?.resume;
+      const profile = result.profile || result.data?.profile || result.sync?.profile;
+      if (resume) {
+        applyCloudResume(resume);
+        setCloudSyncStatus(`已自动同步云端简历：${resume.profile?.name || profile?.name || "未命名资料"}`, "green");
+        setSaveButtonState("saved", reason === "login" ? "已同步" : "已云端保存");
+        return true;
+      }
+      if (profile) {
+        applyCloudProfile(profile);
+        setCloudSyncStatus(`已自动同步云端资料：${profile.name || "未命名资料"}`, "green");
+        setSaveButtonState("saved", reason === "login" ? "已同步" : "已云端保存");
+        return true;
+      }
+      setCloudSyncStatus("已登录，但云端暂未找到已保存的简历资料。", "orange");
+      return false;
+    }
+
     async function supabaseAuth(path, body, options = {}) {
       const url = new URL(`${BCV_AUTH_ENDPOINT}${path}`);
       if (options.redirectTo) url.searchParams.set("redirect_to", options.redirectTo);
@@ -2006,7 +2086,12 @@
         const result = await supabaseAuth("/token?grant_type=password", { email, password });
         safeStorageSet(BCV_AUTH_SESSION_KEY, JSON.stringify({ ...result, email }));
         refreshAccountState();
-        setCloudSyncStatus("已登录。保存简历后，插件可用同一账户同步资料。", "green");
+        setCloudSyncStatus("已登录，正在自动同步云端资料...", "slate");
+        try {
+          await syncFromCloudToEditor({ reason: "login" });
+        } catch (syncError) {
+          setCloudSyncStatus(`已登录，但自动同步失败：${cloudErrorMessage(syncError)}`, "orange");
+        }
       } catch (error) {
         setCloudSyncStatus(`登录失败：${cloudErrorMessage(error)}`, "red");
       }
@@ -3451,10 +3536,16 @@ ${JSON.stringify(resumeFactsForAi(), null, 2)}
       return text.match(pattern)?.[0] || "";
     }
 
-    function replaceItems(type, items) {
-      items.forEach((item, index) => fillNth(type, index, item));
+    function replaceItems(type, items = []) {
+      const normalized = Array.isArray(items) ? items : [];
+      normalized.forEach((item, index) => fillNth(type, index, item));
       document.querySelectorAll(`.resume-item[data-type="${type}"]`).forEach((item, index) => {
-        item.querySelector(".include-check").checked = index < items.length;
+        if (index >= normalized.length) {
+          resetResumeItem(item);
+          item.querySelector(".include-check").checked = false;
+          return;
+        }
+        item.querySelector(".include-check").checked = normalized[index]?.included !== false;
       });
     }
 
@@ -3481,17 +3572,17 @@ ${JSON.stringify(resumeFactsForAi(), null, 2)}
       fillNth(type, 0, data);
     }
 
-    function fillNth(type, index, data) {
+    function fillNth(type, index, data = {}) {
       const item = ensureItem(type, index);
       if (!item) return;
       const orgField = item.querySelector(".item-school, .item-company");
-      if (orgField) orgField.value = data.org;
-      item.querySelector(".item-city").value = data.city;
+      if (orgField) orgField.value = data.org || "";
+      item.querySelector(".item-city").value = data.city || "";
       const roleField = item.querySelector(".item-degree, .item-role");
-      if (roleField) roleField.value = data.role;
-      item.querySelector(".item-date").value = data.date;
-      item.querySelector(".item-detail").value = data.detail;
-      item.querySelector(".include-check").checked = true;
+      if (roleField) roleField.value = data.role || "";
+      item.querySelector(".item-date").value = data.date || "";
+      item.querySelector(".item-detail").value = data.detail || "";
+      item.querySelector(".include-check").checked = data.included !== false;
     }
 
     function ensureItem(type, index) {

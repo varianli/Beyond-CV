@@ -889,7 +889,8 @@ async function loginAccount() {
     await chrome.storage.sync.set({ authSession: { ...authSession, email } });
     $("accountStatus").textContent = `已登录：${email}`;
     $("logoutAccountButton").disabled = false;
-    $("scanStatus").textContent = "账户已登录，可以从云端同步资料。";
+    $("scanStatus").textContent = "账户已登录，正在自动同步云端资料...";
+    await syncFromCloud();
   } catch (error) {
     $("scanStatus").textContent = `登录失败：${cloudErrorMessage(error)}`;
   } finally {
@@ -903,6 +904,31 @@ async function logoutAccount() {
   $("accountStatus").textContent = "未登录，可使用同步码";
   $("logoutAccountButton").disabled = true;
   $("scanStatus").textContent = "已退出账户。";
+}
+
+function profileFromCloudResult(result = {}) {
+  if (result.profile) return result.profile;
+  const resume = result.resume || result.data?.resume || result.sync?.resume;
+  if (!resume) return {};
+  const knowledgeBase = resume.knowledgeBase || {};
+  const resumeProfile = resume.profile || knowledgeBase.profile || {};
+  const education = Array.isArray(knowledgeBase.education) && knowledgeBase.education.length
+    ? knowledgeBase.education
+    : Array.isArray(resume.education) ? resume.education : [];
+  const primaryEducation = education.find((item) => item.included) || education[0] || {};
+  return {
+    name: resumeProfile.name || "",
+    phone: resumeProfile.phone || "",
+    email: resumeProfile.email || "",
+    city: resumeProfile.address || resumeProfile.city || "",
+    address: resumeProfile.address || resumeProfile.city || "",
+    school: primaryEducation.org || "",
+    degree: primaryEducation.role || "",
+    educationStart: "",
+    educationEnd: "",
+    skills: Array.isArray(resume.skills?.selected) ? resume.skills.selected.join("\n") : "",
+    knowledgeBase
+  };
 }
 
 async function syncFromCloud() {
@@ -928,7 +954,8 @@ async function syncFromCloud() {
     });
     const result = await response.json();
     if (!response.ok) throw new Error(result.error || "同步失败");
-    profile = { ...profile, ...(result.profile || {}) };
+    const cloudProfile = profileFromCloudResult(result);
+    profile = { ...profile, ...cloudProfile };
     const updates = {};
     if (result.token || token) updates.syncToken = result.token || token;
     await persistProfile(profile, updates);
