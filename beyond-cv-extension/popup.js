@@ -60,6 +60,14 @@ async function sendToTab(type, payload = {}) {
   }
 }
 
+function cloudErrorMessage(error) {
+  const message = String(error?.message || error || "");
+  if (/Failed to fetch|NetworkError|Load failed/i.test(message)) {
+    return `无法连接云端服务：${BCV_SUPABASE_URL} 当前不可访问，请检查 Supabase 项目、Edge Function 和 CORS 配置。`;
+  }
+  return message || "云端请求失败";
+}
+
 function compact(text) {
   return String(text || "").replace(/\s+/g, " ").trim();
 }
@@ -268,7 +276,7 @@ async function loginAccount() {
     $("logoutAccountButton").disabled = false;
     $("scanStatus").textContent = "账户已登录，可以从云端同步资料。";
   } catch (error) {
-    $("scanStatus").textContent = `登录失败：${error.message}`;
+    $("scanStatus").textContent = `登录失败：${cloudErrorMessage(error)}`;
   } finally {
     $("loginAccountButton").disabled = false;
   }
@@ -313,7 +321,7 @@ async function syncFromCloud() {
     $("syncTokenInput").value = updates.syncToken || "";
     $("scanStatus").textContent = `已从云端同步资料：${profile.name || "未命名"}。`;
   } catch (error) {
-    $("scanStatus").textContent = `云端同步失败：${error.message}`;
+    $("scanStatus").textContent = `云端同步失败：${cloudErrorMessage(error)}`;
   } finally {
     $("cloudSyncButton").textContent = "从云端同步资料";
     $("cloudSyncButton").disabled = false;

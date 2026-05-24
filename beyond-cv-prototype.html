@@ -1919,6 +1919,14 @@
       };
     }
 
+    function cloudErrorMessage(error) {
+      const message = String(error?.message || error || "");
+      if (/Failed to fetch|NetworkError|Load failed/i.test(message)) {
+        return `无法连接云端服务：${BCV_SUPABASE_URL} 当前不可访问。请检查 Supabase 项目是否存在、Edge Function 是否已部署，以及 CORS 是否允许当前页面访问。`;
+      }
+      return message || "云端请求失败";
+    }
+
     function refreshAccountState() {
       const session = getAuthSession();
       const email = session?.user?.email || session?.email || "";
@@ -1982,7 +1990,7 @@
           setCloudSyncStatus("账户已创建，可直接登录。", "green");
         }
       } catch (error) {
-        setCloudSyncStatus(`创建账户失败：${error.message}`, "red");
+        setCloudSyncStatus(`创建账户失败：${cloudErrorMessage(error)}`, "red");
       }
     }
 
@@ -2000,7 +2008,7 @@
         refreshAccountState();
         setCloudSyncStatus("已登录。保存简历后，插件可用同一账户同步资料。", "green");
       } catch (error) {
-        setCloudSyncStatus(`登录失败：${error.message}`, "red");
+        setCloudSyncStatus(`登录失败：${cloudErrorMessage(error)}`, "red");
       }
     }
 
@@ -2053,7 +2061,7 @@
         setCloudSyncStatus(`已${mode}到后端：${new Date(result.updatedAt).toLocaleString()}`, "green");
         setSaveButtonState("saved", "已云端保存");
       } catch (error) {
-        setCloudSyncStatus(`同步失败：${error.message}`, "red");
+        setCloudSyncStatus(`同步失败：${cloudErrorMessage(error)}`, "red");
         setSaveButtonState("error", "保存失败");
       } finally {
         if (button) {
