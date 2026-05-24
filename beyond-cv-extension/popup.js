@@ -540,6 +540,7 @@ function normalizeSlot(slot) {
 
 function fieldStrongText(field) {
   return [
+    field.visualLabel,
     field.label,
     field.placeholder,
     field.name,
@@ -561,6 +562,26 @@ function hasFieldSignal(text) {
   return /手机|电话|邮箱|电子邮件|姓名|真实姓名|中文名|工作地点|期望地点|期望工作地|城市|地点|学校|院校|大学|毕业院校|学历|最高学历|学位|学院|院系|专业|入学|开始|起始|毕业|结束|终止|技能|能力|经历|介绍|总结|开放题|问题|动机|优势|mobile|phone|tel|email|e-mail|mail|name|location|city|school|university|education|degree|department|faculty|college|major|start|from|end|to|graduat|skills|summary|motivation|question/i.test(String(text || ""));
 }
 
+function isChoiceLikeField(field) {
+  return field.tag === "select"
+    || field.inputRole === "choice"
+    || /combobox|listbox/i.test(`${field.role || ""} ${field.ariaRole || ""}`)
+    || Boolean(field.options?.length);
+}
+
+function citySignal(text) {
+  return /期望工作地点|工作地点|期望地点|期望工作地|城市|地点|location|city|上海|北京|深圳|广州|杭州|成都|南京|苏州|武汉|西安|重庆|天津|厦门|长沙|郑州|青岛|合肥|宁波|佛山|无锡|东莞|shanghai|beijing|shenzhen|guangzhou|hangzhou|chengdu/i.test(String(text || ""));
+}
+
+function fieldLooksLikeCityChoice(field) {
+  const text = [
+    validationText(field),
+    field.currentValue,
+    ...(Array.isArray(field.options) ? field.options : [])
+  ].filter(Boolean).join(" ");
+  return isChoiceLikeField(field) && citySignal(text);
+}
+
 function expectedSlotsForField(field) {
   const strongText = fieldStrongText(field);
   const broadText = validationText(field);
@@ -568,13 +589,14 @@ function expectedSlotsForField(field) {
   if (/密码|验证码|证件|身份证|护照|薪资|隐私|协议|同意|password|captcha|passport|salary|privacy|terms|agree/i.test(broadText)) return ["blocked"];
   if (field.inputRole === "phone_country_code") return ["phoneCountryCode"];
   if (field.inputRole === "phone_number") return ["phoneNumber"];
+  if (fieldLooksLikeCityChoice(field)) return ["cityPreference"];
   if (field.controlCount > 1 && (/手机|电话|mobile|phone|tel/i.test(text) || /手机|电话|mobile|phone|tel/i.test(broadText))) {
     return Number(field.controlIndex) === 0 ? ["phoneCountryCode"] : ["phoneNumber"];
   }
   if (/手机|电话|mobile|phone|tel/i.test(text)) return ["phoneNumber", "phoneCountryCode"];
+  if (citySignal(text)) return ["cityPreference"];
   if (/邮箱|电子邮件|email|e-mail|mail/i.test(text)) return ["email"];
   if (/姓名|真实姓名|中文名|name/i.test(text) && !/公司|学校|联系人|紧急/i.test(text)) return ["name"];
-  if (/工作地点|期望地点|期望工作地|城市|地点|location|city/i.test(text)) return ["cityPreference"];
   if (/学校|院校|大学|毕业院校|school|university/i.test(text)) return ["school"];
   if (/学历|最高学历|education level/i.test(text) && !/学历类型|培养方式/i.test(text)) return ["educationLevel"];
   if (/学位|degree/i.test(text)) return ["degree"];
@@ -640,6 +662,24 @@ function validateAiAssignment(item, base, factsById, factsBySlot) {
       reason: `本地校验拒绝：该字段期望 ${expectedSlots.join("/")}，AI 返回 ${requestedSlot}`
     };
   }
+  if (isChoiceLikeField(base) && ["email", "phoneNumber", "name", "firstName", "lastName"].includes(requestedSlot)) {
+    return {
+      slot: requestedSlot,
+      value: "",
+      blocked: false,
+      canFill: false,
+      reason: "本地校验拒绝：下拉/选择控件不能填入联系方式或姓名"
+    };
+  }
+  if (fieldLooksLikeCityChoice(base) && requestedSlot !== "cityPreference") {
+    return {
+      slot: requestedSlot,
+      value: "",
+      blocked: false,
+      canFill: false,
+      reason: "本地校验拒绝：地点控件只能填入城市/地点事实"
+    };
+  }
   let fact = factsById.get(String(item.factId || ""));
   if (!fact && item.value) {
     fact = (factsBySlot.get(requestedSlot) || []).find((candidate) => candidate.value === String(item.value).trim());
@@ -683,11 +723,12 @@ function normalizeAiScanResult(result, model, facts = []) {
       if (!base) return null;
       const confidence = Math.max(0, Math.min(1, Number(item.confidence) || 0));
       const validated = validateAiAssignment(item, base, factsById, factsBySlot);
+      const acceptedKey = validated.canFill || validated.blocked ? validated.slot : "";
       return {
         ...base,
-        key: validated.slot,
+        key: acceptedKey,
         factId: String(item.factId || ""),
-        matchLabel: String(item.label || validated.slot || "AI 识别字段").slice(0, 80),
+        matchLabel: String(acceptedKey ? (item.label || validated.slot || "AI 识别字段") : "本地校验已拒绝").slice(0, 80),
         value: validated.value.slice(0, 3000),
         confidence,
         blocked: Boolean(item.blocked || item.sensitive || validated.blocked),

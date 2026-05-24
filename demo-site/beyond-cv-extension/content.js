@@ -212,7 +212,7 @@
 
     return candidates
       .sort((a, b) => a.score - b.score)
-      .slice(0, 5)
+      .slice(0, 1)
       .map((item) => item.text)
       .join(" ");
   }
@@ -344,10 +344,12 @@
     const siblings = controlSiblings(root);
     const controlIndex = Math.max(0, siblings.indexOf(el));
     const containerText = cleanContainerText(root, 420);
-    const label = directLabelText(root) || nearbyVisualLabelText(el).split(" ").slice(0, 4).join(" ");
+    const visualLabel = nearbyVisualLabelText(el).split(" ").slice(0, 4).join(" ");
+    const label = directLabelText(root) || visualLabel;
     return {
       section: nearestSectionText(el),
       label,
+      visualLabel,
       containerText,
       controlIndex,
       controlCount: siblings.length || 1,
@@ -557,6 +559,7 @@
     const labelText = compact([
       context.section ? `栏目:${context.section}` : "",
       context.label ? `字段:${context.label}` : "",
+      context.visualLabel ? `最近标签:${context.visualLabel}` : "",
       context.containerText ? `表单项:${context.containerText}` : "",
       fieldText(el)
     ].filter(Boolean).join(" "));
@@ -575,6 +578,7 @@
       options: fieldOptions(el),
       section: context.section,
       label: context.label,
+      visualLabel: context.visualLabel,
       containerText: context.containerText,
       controlIndex: context.controlIndex,
       controlCount: context.controlCount,
