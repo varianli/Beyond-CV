@@ -1653,6 +1653,19 @@
         }));
     }
 
+    function collectAllItems(type) {
+      return [...document.querySelectorAll(`.resume-item[data-type="${type}"]`)]
+        .map((item) => ({
+          included: Boolean(item.querySelector(".include-check")?.checked),
+          org: fieldValue(item, ".item-school") || fieldValue(item, ".item-company"),
+          city: fieldValue(item, ".item-city"),
+          role: fieldValue(item, ".item-degree") || fieldValue(item, ".item-role"),
+          date: fieldValue(item, ".item-date"),
+          detail: fieldValue(item, ".item-detail")
+        }))
+        .filter((item) => item.org || item.city || item.role || item.date || item.detail);
+    }
+
     function fieldValue(root, selector) {
       return root.querySelector(selector)?.value?.trim() || "";
     }
@@ -1683,6 +1696,28 @@
 
     function skillValue(id) {
       return $(id)?.value.trim() || "";
+    }
+
+    function buildKnowledgeBase(profile, skills, familyInfo, rawText, updatedAt) {
+      return {
+        source: "beyond-cv-prototype",
+        profile: { ...profile },
+        rawText: rawText || "",
+        education: collectAllItems("education"),
+        experience: collectAllItems("experience"),
+        campus: collectAllItems("campus"),
+        skills: {
+          selected: skills.selected || [],
+          all: skills.all || collectSkillLines(false),
+          languages: skills.languages || "",
+          technical: skills.technical || "",
+          certs: skills.certs || "",
+          activities: skills.activities || "",
+          interests: skills.interests || ""
+        },
+        familyInfo: familyInfo || [],
+        updatedAt: updatedAt || new Date().toISOString()
+      };
     }
 
     function renderSkills(lines = collectSkillLines(true)) {
@@ -1749,32 +1784,38 @@
       const education = collectItems("education");
       const experience = collectItems("experience");
       const campus = collectItems("campus");
+      const profile = {
+        name: $("candidateName").value.trim(),
+        phone: $("candidatePhone").value.trim(),
+        email: $("candidateEmail").value.trim(),
+        contact: [$("candidatePhone").value.trim(), $("candidateEmail").value.trim()].filter(Boolean).join(" | "),
+        address: $("candidateAddress").value.trim()
+      };
+      const skills = {
+        selected: collectSkillLines(true),
+        all: collectSkillLines(false),
+        languages: skillValue("skillsLanguages"),
+        technical: skillValue("skillsTechnical"),
+        certs: skillValue("skillsCerts"),
+        activities: skillValue("skillsActivities"),
+        interests: skillValue("skillsInterests")
+      };
+      const familyInfo = $("familyInfoToggle")?.checked ? collectFamilyRows() : [];
+      const smartPasteText = $("smartPasteText").value.trim();
+      const updatedAt = new Date().toISOString();
       return {
-        version: 1,
+        version: 2,
         lang: state.lang,
         density: state.density,
-        profile: {
-          name: $("candidateName").value.trim(),
-          phone: $("candidatePhone").value.trim(),
-          email: $("candidateEmail").value.trim(),
-          contact: [$("candidatePhone").value.trim(), $("candidateEmail").value.trim()].filter(Boolean).join(" | "),
-          address: $("candidateAddress").value.trim()
-        },
+        profile,
         education,
         experience,
         campus,
-        skills: {
-          selected: collectSkillLines(true),
-          all: collectSkillLines(false),
-          languages: skillValue("skillsLanguages"),
-          technical: skillValue("skillsTechnical"),
-          certs: skillValue("skillsCerts"),
-          activities: skillValue("skillsActivities"),
-          interests: skillValue("skillsInterests")
-        },
-        familyInfo: $("familyInfoToggle")?.checked ? collectFamilyRows() : [],
-        smartPasteText: $("smartPasteText").value.trim(),
-        updatedAt: new Date().toISOString()
+        skills,
+        familyInfo,
+        smartPasteText,
+        knowledgeBase: buildKnowledgeBase(profile, skills, familyInfo, smartPasteText, updatedAt),
+        updatedAt
       };
     }
 
@@ -1783,11 +1824,29 @@
       const contact = resume.profile.contact || "";
       const email = resume.profile.email || contact.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0] || "";
       const phone = resume.profile.phone || contact.match(/(?:\+?86[\s-]?)?1[3-9]\d{9}/)?.[0]?.replace(/^(\+?86)?\s*/, "") || "";
-      const primaryEducation = resume.education[0] || {};
+      const resumeSkills = resume.skills || {};
+      const fallbackKnowledgeBase = {
+        source: "beyond-cv-prototype",
+        profile: resume.profile,
+        rawText: resume.smartPasteText || "",
+        education: (resume.education || []).map((item) => ({ included: true, ...item })),
+        experience: (resume.experience || []).map((item) => ({ included: true, ...item })),
+        campus: (resume.campus || []).map((item) => ({ included: true, ...item })),
+        skills: resumeSkills,
+        familyInfo: resume.familyInfo || [],
+        updatedAt: resume.updatedAt || new Date().toISOString()
+      };
+      const knowledgeBase = resume.knowledgeBase || fallbackKnowledgeBase;
+      const selectedEducation = Array.isArray(resume.education) ? resume.education : [];
+      const selectedExperience = Array.isArray(resume.experience) ? resume.experience : [];
+      const selectedCampus = Array.isArray(resume.campus) ? resume.campus : [];
+      const knowledgeEducation = Array.isArray(knowledgeBase.education) ? knowledgeBase.education : [];
+      const primaryEducation = selectedEducation[0] || knowledgeEducation.find((item) => item.included) || knowledgeEducation[0] || {};
       const educationRole = parseEducationRole(primaryEducation.role || "");
       const educationDates = parseDateRange(primaryEducation.date || "");
       const { firstName, lastName } = splitChineseName(name);
       return {
+        profileVersion: 2,
         name,
         firstName,
         lastName,
@@ -1807,9 +1866,10 @@
         lab: "",
         researchArea: "",
         advisor: "",
-        skills: (resume.skills.selected || []).join("\n") || [resume.skills.technical, resume.skills.certs, resume.skills.languages].filter(Boolean).join("\n"),
-        summary: resume.experience[0]?.detail || resume.campus[0]?.detail || "",
-        motivation: "我希望申请该岗位，是因为它同时要求用户理解、数据分析和跨团队推动能力。我会结合已有项目经验，快速拆解用户问题、验证方案并推动落地。"
+        skills: (resumeSkills.selected || []).join("\n") || [resumeSkills.technical, resumeSkills.certs, resumeSkills.languages].filter(Boolean).join("\n"),
+        summary: selectedExperience[0]?.detail || selectedCampus[0]?.detail || "",
+        motivation: "我希望申请该岗位，是因为它同时要求用户理解、数据分析和跨团队推动能力。我会结合已有项目经验，快速拆解用户问题、验证方案并推动落地。",
+        knowledgeBase
       };
     }
 
@@ -2664,12 +2724,23 @@ ${trimForAi(jdText, 9000)}
 
     function resumeFactsForAi() {
       const resume = collectResumePayload();
+      const knowledgeBase = resume.knowledgeBase || {};
       return {
         profile: resume.profile,
-        education: resume.education,
-        experience: resume.experience,
-        campus: resume.campus,
-        skills: resume.skills
+        selectedResume: {
+          education: resume.education,
+          experience: resume.experience,
+          campus: resume.campus,
+          skills: resume.skills.selected
+        },
+        knowledgeBase: {
+          rawText: knowledgeBase.rawText || resume.smartPasteText || "",
+          education: knowledgeBase.education || resume.education,
+          experience: knowledgeBase.experience || resume.experience,
+          campus: knowledgeBase.campus || resume.campus,
+          skills: knowledgeBase.skills || resume.skills,
+          familyInfo: knowledgeBase.familyInfo || resume.familyInfo || []
+        }
       };
     }
 

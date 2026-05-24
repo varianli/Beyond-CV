@@ -7,6 +7,7 @@ const BCV_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJz
 const BCV_SYNC_ENDPOINT = `${BCV_SUPABASE_URL}/functions/v1/bcv-profile-sync`;
 const BCV_AUTH_ENDPOINT = `${BCV_SUPABASE_URL}/auth/v1`;
 const BCV_APPLICATIONS_KEY = "applicationRecords";
+const BCV_PROFILE_KNOWLEDGE_KEY = "profileKnowledgeBase";
 
 async function getActiveTab() {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -14,14 +15,35 @@ async function getActiveTab() {
 }
 
 async function loadProfile() {
-  const stored = await chrome.storage.sync.get(["profile", "syncToken", "authSession"]);
-  profile = stored.profile || {};
+  const [stored, localStored] = await Promise.all([
+    chrome.storage.sync.get(["profile", "syncToken", "authSession"]),
+    chrome.storage.local.get(BCV_PROFILE_KNOWLEDGE_KEY)
+  ]);
+  profile = {
+    ...(stored.profile || {}),
+    ...(localStored[BCV_PROFILE_KNOWLEDGE_KEY] ? { knowledgeBase: localStored[BCV_PROFILE_KNOWLEDGE_KEY] } : {})
+  };
   $("profileName").textContent = profile.name || "未设置姓名";
   $("syncTokenInput").value = stored.syncToken || "";
   const email = stored.authSession?.user?.email || stored.authSession?.email || "";
   $("accountEmailInput").value = email;
   $("accountStatus").textContent = email ? `已登录：${email}` : "未登录，可使用同步码";
   $("logoutAccountButton").disabled = !email;
+}
+
+function profileForSyncStorage(profileData) {
+  const { knowledgeBase: _knowledgeBase, ...syncProfile } = profileData || {};
+  return syncProfile;
+}
+
+async function persistProfile(profileData, syncExtras = {}) {
+  const syncProfile = profileForSyncStorage(profileData);
+  await chrome.storage.sync.set({ ...syncExtras, profile: syncProfile });
+  if (profileData?.knowledgeBase) {
+    await chrome.storage.local.set({ [BCV_PROFILE_KNOWLEDGE_KEY]: profileData.knowledgeBase });
+  } else {
+    await chrome.storage.local.remove(BCV_PROFILE_KNOWLEDGE_KEY);
+  }
 }
 
 async function sendToTab(type, payload = {}) {
@@ -209,7 +231,7 @@ async function importProfile() {
       return;
     }
     profile = { ...profile, ...result.profile };
-    await chrome.storage.sync.set({ profile });
+    await persistProfile(profile);
     $("profileName").textContent = profile.name || "未设置姓名";
     $("scanStatus").textContent = "已从 Beyond CV 页面导入资料。";
   } finally {
@@ -284,9 +306,9 @@ async function syncFromCloud() {
     const result = await response.json();
     if (!response.ok) throw new Error(result.error || "同步失败");
     profile = { ...profile, ...(result.profile || {}) };
-    const updates = { profile };
+    const updates = {};
     if (result.token || token) updates.syncToken = result.token || token;
-    await chrome.storage.sync.set(updates);
+    await persistProfile(profile, updates);
     $("profileName").textContent = profile.name || "未设置姓名";
     $("syncTokenInput").value = updates.syncToken || "";
     $("scanStatus").textContent = `已从云端同步资料：${profile.name || "未命名"}。`;

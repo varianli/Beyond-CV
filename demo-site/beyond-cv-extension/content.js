@@ -1,5 +1,5 @@
 (function () {
-  const CONTENT_VERSION = "0.1.6";
+  const CONTENT_VERSION = "0.1.7";
   if (window.__beyondCvContentVersion === CONTENT_VERSION) return;
   window.__beyondCvContentVersion = CONTENT_VERSION;
 
@@ -296,6 +296,46 @@
     return null;
   }
 
+  function firstKnowledgeItem(profile, type) {
+    const items = profile?.knowledgeBase?.[type];
+    if (!Array.isArray(items)) return {};
+    return items.find((item) => item.included) || items[0] || {};
+  }
+
+  function profileFromKnowledgeBase(profile) {
+    const knowledgeBase = profile?.knowledgeBase || {};
+    const education = firstKnowledgeItem(profile, "education");
+    const experience = firstKnowledgeItem(profile, "experience");
+    const campus = firstKnowledgeItem(profile, "campus");
+    const parsedEducation = parseEducationFields(education.role || "", education.date || "");
+    const skills = knowledgeBase.skills || {};
+    return {
+      name: knowledgeBase.profile?.name || "",
+      email: knowledgeBase.profile?.email || "",
+      phone: knowledgeBase.profile?.phone || "",
+      city: knowledgeBase.profile?.address || "",
+      address: knowledgeBase.profile?.address || "",
+      school: education.org || "",
+      degree: parsedEducation.degree,
+      educationType: parsedEducation.educationType,
+      educationLevel: parsedEducation.educationLevel,
+      educationStart: parsedEducation.educationStart,
+      educationEnd: parsedEducation.educationEnd,
+      graduation: parsedEducation.educationEnd,
+      college: parsedEducation.college,
+      major: parsedEducation.major,
+      skills: Array.isArray(skills.selected) && skills.selected.length
+        ? skills.selected.join("\n")
+        : [
+          ...(Array.isArray(skills.all) ? skills.all : []),
+          skills.technical,
+          skills.certs,
+          skills.languages
+        ].filter(Boolean).join("\n"),
+      summary: experience.detail || campus.detail || ""
+    };
+  }
+
   function valueFor(profile, key) {
     const aliases = {
       educationStart: ["educationStart", "startDate", "educationDate"],
@@ -308,7 +348,7 @@
       advisor: ["advisor", "supervisor"]
     }[key] || [key];
 
-    for (const source of [profile || {}, FALLBACK_PROFILE]) {
+    for (const source of [profile || {}, profileFromKnowledgeBase(profile), FALLBACK_PROFILE]) {
       for (const alias of aliases) {
         const cleaned = cleanProfileValue(source?.[alias]);
         if (!cleaned) continue;
@@ -626,25 +666,93 @@
     };
   }
 
+  function beyondCvValue(id) {
+    return document.getElementById(id)?.value?.trim() || "";
+  }
+
+  function collectBeyondCvItems(type) {
+    return [...document.querySelectorAll(`.resume-item[data-type="${type}"]`)]
+      .map((item) => ({
+        included: Boolean(item.querySelector(".include-check")?.checked),
+        org: item.querySelector(".item-school, .item-company")?.value?.trim() || "",
+        city: item.querySelector(".item-city")?.value?.trim() || "",
+        role: item.querySelector(".item-degree, .item-role")?.value?.trim() || "",
+        date: item.querySelector(".item-date")?.value?.trim() || "",
+        detail: item.querySelector(".item-detail")?.value?.trim() || ""
+      }))
+      .filter((item) => item.org || item.city || item.role || item.date || item.detail);
+  }
+
+  function collectBeyondCvSkillLines(onlyIncluded = false) {
+    return [...document.querySelectorAll(".skill-item")]
+      .filter((row) => !onlyIncluded || row.querySelector(".skill-include")?.checked)
+      .map((row) => row.querySelector(".skill-input")?.value?.trim() || "")
+      .filter(Boolean);
+  }
+
+  function collectBeyondCvFamilyRows() {
+    return [...document.querySelectorAll(".family-row")]
+      .map((row) => ({
+        name: row.querySelector(".family-name")?.value?.trim() || "",
+        relation: row.querySelector(".family-relation")?.value?.trim() || "",
+        position: row.querySelector(".family-position")?.value?.trim() || ""
+      }))
+      .filter((row) => row.name || row.relation || row.position);
+  }
+
+  function collectBeyondCvKnowledgeBase(profile) {
+    return {
+      source: "beyond-cv-page",
+      profile: { ...profile },
+      rawText: beyondCvValue("smartPasteText"),
+      education: collectBeyondCvItems("education"),
+      experience: collectBeyondCvItems("experience"),
+      campus: collectBeyondCvItems("campus"),
+      skills: {
+        selected: collectBeyondCvSkillLines(true),
+        all: collectBeyondCvSkillLines(false),
+        languages: beyondCvValue("skillsLanguages"),
+        technical: beyondCvValue("skillsTechnical"),
+        certs: beyondCvValue("skillsCerts"),
+        activities: beyondCvValue("skillsActivities"),
+        interests: beyondCvValue("skillsInterests")
+      },
+      familyInfo: document.getElementById("familyInfoToggle")?.checked ? collectBeyondCvFamilyRows() : [],
+      updatedAt: new Date().toISOString()
+    };
+  }
+
   function exportBeyondCvProfile() {
-    const byId = (id) => document.getElementById(id)?.value?.trim() || "";
+    const byId = beyondCvValue;
     const name = byId("candidateName");
     if (!name) return null;
     const contact = byId("candidateContact");
     const email = contact.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0] || "";
     const phone = contact.match(/(?:\+?86[\s-]?)?1[3-9]\d{9}/)?.[0]?.replace(/^(\+?86)?\s*/, "") || "";
-    const rawDegree = document.querySelector(".item-degree")?.value?.trim() || "";
-    const rawDate = document.querySelector(".item-date")?.value?.trim() || "";
+    const baseProfile = {
+      name,
+      phone: byId("candidatePhone") || phone,
+      email: byId("candidateEmail") || email,
+      address: byId("candidateAddress"),
+      contact
+    };
+    const knowledgeBase = collectBeyondCvKnowledgeBase(baseProfile);
+    const primaryEducation = knowledgeBase.education.find((item) => item.included) || knowledgeBase.education[0] || {};
+    const primaryExperience = knowledgeBase.experience.find((item) => item.included) || knowledgeBase.experience[0] || {};
+    const primaryCampus = knowledgeBase.campus.find((item) => item.included) || knowledgeBase.campus[0] || {};
+    const rawDegree = primaryEducation.role || "";
+    const rawDate = primaryEducation.date || "";
     const parsedEducation = parseEducationFields(rawDegree, rawDate);
     return {
+      profileVersion: 2,
       name,
       firstName: name.length > 1 ? name.slice(1) : name,
       lastName: name.length > 1 ? name.slice(0, 1) : "",
-      email: byId("candidateEmail") || email,
-      phone: byId("candidatePhone") || phone,
-      city: byId("candidateAddress"),
-      address: byId("candidateAddress"),
-      school: safeResumeField(document.querySelector(".item-school")?.value),
+      email: baseProfile.email,
+      phone: baseProfile.phone,
+      city: baseProfile.address,
+      address: baseProfile.address,
+      school: safeResumeField(primaryEducation.org),
       degree: parsedEducation.degree,
       educationType: parsedEducation.educationType,
       educationLevel: parsedEducation.educationLevel,
@@ -657,19 +765,16 @@
       researchArea: "",
       advisor: "",
       skills: collectBeyondCvSkills(),
-      summary:
-        document.querySelector(".resume-item[data-type='experience'] .item-detail")?.value?.trim() || "",
-      motivation: ""
+      summary: primaryExperience.detail || primaryCampus.detail || "",
+      motivation: "",
+      knowledgeBase
     };
   }
 
   function collectBeyondCvSkills() {
-    const rows = [...document.querySelectorAll(".skill-item")]
-      .filter((row) => row.querySelector(".skill-include")?.checked)
-      .map((row) => row.querySelector(".skill-input")?.value?.trim() || "")
-      .filter(Boolean);
+    const rows = collectBeyondCvSkillLines(true);
     if (rows.length) return rows.join("\n");
-    const byId = (id) => document.getElementById(id)?.value?.trim() || "";
+    const byId = beyondCvValue;
     return [
       byId("skillsTechnical"),
       byId("skillsCerts"),
