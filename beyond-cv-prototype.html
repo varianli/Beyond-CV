@@ -1014,7 +1014,7 @@
               新建岗位适配
             </button>
           </div>
-          <div class="grid gap-4 lg:grid-cols-[0.9fr_1.1fr_0.9fr]">
+          <div class="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
             <div class="soft-panel rounded-[12px] p-4">
               <h3 class="mb-3 text-sm font-semibold text-slate-900">JD 语义理解</h3>
               <div class="space-y-3 text-sm">
@@ -1043,67 +1043,6 @@
               </div>
             </div>
             <div class="soft-panel rounded-[12px] p-4">
-              <div class="mb-3 flex items-center justify-between gap-3">
-                <h3 class="text-sm font-semibold text-slate-900">生成材料</h3>
-                <button id="generateAllMaterialsButton" class="secondary-button min-h-[32px] px-3 text-xs" type="button">
-                  <i data-lucide="sparkles" class="h-3.5 w-3.5"></i>
-                  全部生成
-                </button>
-              </div>
-              <div class="grid gap-3 sm:grid-cols-2">
-                <button class="material-card rounded-[10px] border border-slate-200 bg-white/75 p-3 text-left transition hover:border-blue-200 hover:bg-blue-50/40" data-material="shortAnswer" type="button">
-                  <div class="mb-2 flex items-center justify-between gap-2 text-sm font-semibold text-slate-900">
-                    <span class="flex items-center gap-2">
-                      <i data-lucide="message-square-text" class="h-4 w-4 text-blue-600"></i>
-                      字段短答
-                    </span>
-                    <i data-lucide="maximize-2" class="h-3.5 w-3.5 text-slate-400"></i>
-                  </div>
-                  <p id="materialShortAnswer" class="whitespace-pre-line text-xs leading-5 text-slate-500">可入职时间、经历摘要、为什么申请该岗位。</p>
-                </button>
-                <button class="material-card rounded-[10px] border border-slate-200 bg-white/75 p-3 text-left transition hover:border-violet-200 hover:bg-violet-50/40" data-material="coverLetter" type="button">
-                  <div class="mb-2 flex items-center justify-between gap-2 text-sm font-semibold text-slate-900">
-                    <span class="flex items-center gap-2">
-                      <i data-lucide="mail" class="h-4 w-4 text-violet-600"></i>
-                      Cover Letter
-                    </span>
-                    <i data-lucide="maximize-2" class="h-3.5 w-3.5 text-slate-400"></i>
-                  </div>
-                  <p id="materialCoverLetter" class="whitespace-pre-line text-xs leading-5 text-slate-500">300 字中文版本，引用已勾选经历和关键成果。</p>
-                </button>
-                <div class="material-card rounded-[10px] border border-slate-200 bg-white/75 p-3 text-left transition hover:border-emerald-200 hover:bg-emerald-50/40" data-material="bq">
-                  <div class="mb-2 flex items-center justify-between gap-2 text-sm font-semibold text-slate-900">
-                    <span class="flex items-center gap-2">
-                      <i data-lucide="list-checks" class="h-4 w-4 text-emerald-600"></i>
-                      Behavior Question
-                    </span>
-                    <button id="previewBQButton" class="grid h-7 w-7 place-items-center rounded-[8px] border border-slate-200 bg-white text-slate-500 transition hover:border-emerald-200 hover:text-emerald-700" type="button" aria-label="预览 Behavior Question 回答">
-                      <i data-lucide="maximize-2" class="h-3.5 w-3.5"></i>
-                    </button>
-                  </div>
-                  <textarea id="bqQuestionInput" class="field-textarea min-h-[76px] text-xs leading-5" placeholder="输入面试官问题，例如：请讲一次你和团队合作解决问题的经历"></textarea>
-                  <div class="mt-2 flex items-center justify-between gap-2">
-                    <button id="generateBQButton" class="primary-button min-h-[32px] px-3 text-xs" type="button">
-                      <i data-lucide="sparkles" class="h-3.5 w-3.5"></i>
-                      生成回答
-                    </button>
-                    <span id="bqQuestionStatus" class="text-xs font-semibold text-slate-400">待生成</span>
-                  </div>
-                  <p id="materialBQ" class="mt-3 whitespace-pre-line rounded-[8px] bg-emerald-50/60 p-3 text-xs leading-5 text-slate-600">待生成回答。</p>
-                </div>
-                <button class="material-card rounded-[10px] border border-slate-200 bg-white/75 p-3 text-left transition hover:border-orange-200 hover:bg-orange-50/40" data-material="resumeAdvice" type="button">
-                  <div class="mb-2 flex items-center justify-between gap-2 text-sm font-semibold text-slate-900">
-                    <span class="flex items-center gap-2">
-                      <i data-lucide="file-symlink" class="h-4 w-4 text-orange-600"></i>
-                      适配简历建议
-                    </span>
-                    <i data-lucide="maximize-2" class="h-3.5 w-3.5 text-slate-400"></i>
-                  </div>
-                  <p id="materialResumeAdvice" class="whitespace-pre-line text-xs leading-5 text-slate-500">推荐保留与目标岗位最相关的经历，弱化无关内容。</p>
-                </button>
-              </div>
-            </div>
-            <div class="soft-panel rounded-[12px] p-4">
               <h3 class="mb-3 text-sm font-semibold text-slate-900">可调用内容选择</h3>
               <div class="space-y-3">
                 <label class="flex items-center gap-3 rounded-[9px] bg-white/75 p-3 text-sm font-semibold text-slate-800">
@@ -1123,6 +1062,70 @@
                   敏感字段需单独确认
                 </label>
               </div>
+            </div>
+          </div>
+          <div class="soft-panel mt-4 rounded-[12px] p-4">
+            <div class="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h3 class="text-sm font-semibold text-slate-900">生成材料</h3>
+                <p class="mt-1 text-xs leading-5 text-slate-500">解析后的材料独立横向展示，点击卡片可放大查看完整内容。</p>
+              </div>
+              <button id="generateAllMaterialsButton" class="secondary-button min-h-[32px] px-3 text-xs" type="button">
+                <i data-lucide="sparkles" class="h-3.5 w-3.5"></i>
+                全部生成
+              </button>
+            </div>
+            <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+              <button class="material-card h-full min-h-[154px] rounded-[10px] border border-slate-200 bg-white/75 p-3 text-left transition hover:border-blue-200 hover:bg-blue-50/40" data-material="shortAnswer" type="button">
+                <div class="mb-2 flex items-center justify-between gap-2 text-sm font-semibold text-slate-900">
+                  <span class="flex items-center gap-2">
+                    <i data-lucide="message-square-text" class="h-4 w-4 text-blue-600"></i>
+                    字段短答
+                  </span>
+                  <i data-lucide="maximize-2" class="h-3.5 w-3.5 text-slate-400"></i>
+                </div>
+                <p id="materialShortAnswer" class="max-h-[112px] overflow-hidden whitespace-pre-line text-xs leading-5 text-slate-500">可入职时间、经历摘要、为什么申请该岗位。</p>
+              </button>
+              <button class="material-card h-full min-h-[154px] rounded-[10px] border border-slate-200 bg-white/75 p-3 text-left transition hover:border-violet-200 hover:bg-violet-50/40" data-material="coverLetter" type="button">
+                <div class="mb-2 flex items-center justify-between gap-2 text-sm font-semibold text-slate-900">
+                  <span class="flex items-center gap-2">
+                    <i data-lucide="mail" class="h-4 w-4 text-violet-600"></i>
+                    Cover Letter
+                  </span>
+                  <i data-lucide="maximize-2" class="h-3.5 w-3.5 text-slate-400"></i>
+                </div>
+                <p id="materialCoverLetter" class="max-h-[112px] overflow-hidden whitespace-pre-line text-xs leading-5 text-slate-500">300 字中文版本，引用已勾选经历和关键成果。</p>
+              </button>
+              <div class="material-card h-full min-h-[154px] rounded-[10px] border border-slate-200 bg-white/75 p-3 text-left transition hover:border-emerald-200 hover:bg-emerald-50/40" data-material="bq">
+                <div class="mb-2 flex items-center justify-between gap-2 text-sm font-semibold text-slate-900">
+                  <span class="flex items-center gap-2">
+                    <i data-lucide="list-checks" class="h-4 w-4 text-emerald-600"></i>
+                    Behavior Question
+                  </span>
+                  <button id="previewBQButton" class="grid h-7 w-7 place-items-center rounded-[8px] border border-slate-200 bg-white text-slate-500 transition hover:border-emerald-200 hover:text-emerald-700" type="button" aria-label="预览 Behavior Question 回答">
+                    <i data-lucide="maximize-2" class="h-3.5 w-3.5"></i>
+                  </button>
+                </div>
+                <textarea id="bqQuestionInput" class="field-textarea min-h-[76px] text-xs leading-5" placeholder="输入面试官问题，例如：请讲一次你和团队合作解决问题的经历"></textarea>
+                <div class="mt-2 flex items-center justify-between gap-2">
+                  <button id="generateBQButton" class="primary-button min-h-[32px] px-3 text-xs" type="button">
+                    <i data-lucide="sparkles" class="h-3.5 w-3.5"></i>
+                    生成回答
+                  </button>
+                  <span id="bqQuestionStatus" class="text-xs font-semibold text-slate-400">待生成</span>
+                </div>
+                <p id="materialBQ" class="mt-3 max-h-[90px] overflow-hidden whitespace-pre-line rounded-[8px] bg-emerald-50/60 p-3 text-xs leading-5 text-slate-600">待生成回答。</p>
+              </div>
+              <button class="material-card h-full min-h-[154px] rounded-[10px] border border-slate-200 bg-white/75 p-3 text-left transition hover:border-orange-200 hover:bg-orange-50/40" data-material="resumeAdvice" type="button">
+                <div class="mb-2 flex items-center justify-between gap-2 text-sm font-semibold text-slate-900">
+                  <span class="flex items-center gap-2">
+                    <i data-lucide="file-symlink" class="h-4 w-4 text-orange-600"></i>
+                    适配简历建议
+                  </span>
+                  <i data-lucide="maximize-2" class="h-3.5 w-3.5 text-slate-400"></i>
+                </div>
+                <p id="materialResumeAdvice" class="max-h-[112px] overflow-hidden whitespace-pre-line text-xs leading-5 text-slate-500">推荐保留与目标岗位最相关的经历，弱化无关内容。</p>
+              </button>
             </div>
           </div>
         </section>
