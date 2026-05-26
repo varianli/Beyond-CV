@@ -676,19 +676,12 @@
             </div>
             <div class="glass-panel rounded-[14px] p-5">
               <div class="mb-4 flex items-center justify-between">
-                <h3 class="font-semibold text-slate-950">待补资料</h3>
-                <span class="text-xs font-semibold text-slate-500">3 项</span>
+                <h3 class="font-semibold text-slate-950">资料缺口检索</h3>
+                <span id="missingInfoCount" class="text-xs font-semibold text-slate-500">检索中</span>
               </div>
-              <div class="space-y-3">
-                <label class="flex items-center gap-3 text-sm text-slate-700">
-                  <input type="checkbox" checked class="h-4 w-4 rounded border-slate-300 text-blue-600" />
-                  项目 / 经历量化成果
-                </label>
-                <label class="flex items-center gap-3 text-sm text-slate-700">
-                  <input type="checkbox" checked class="h-4 w-4 rounded border-slate-300 text-blue-600" />
-                  开放题素材：冲突解决
-                </label>
-                <label class="flex items-center gap-3 text-sm text-slate-700">
+              <div id="missingInfoList" class="space-y-3"></div>
+              <div class="mt-3 rounded-[10px] border border-slate-200 bg-white/70 p-3">
+                <label class="flex items-center gap-3 text-sm font-semibold text-slate-700">
                   <input id="familyInfoToggle" type="checkbox" class="h-4 w-4 rounded border-slate-300 text-blue-600" />
                   家庭信息字段默认关闭
                 </label>
@@ -1014,7 +1007,7 @@
               新建岗位适配
             </button>
           </div>
-          <div class="grid gap-4 lg:grid-cols-[0.9fr_1.1fr_0.9fr]">
+          <div class="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
             <div class="soft-panel rounded-[12px] p-4">
               <h3 class="mb-3 text-sm font-semibold text-slate-900">JD 语义理解</h3>
               <div class="space-y-3 text-sm">
@@ -1043,57 +1036,6 @@
               </div>
             </div>
             <div class="soft-panel rounded-[12px] p-4">
-              <div class="mb-3 flex items-center justify-between gap-3">
-                <h3 class="text-sm font-semibold text-slate-900">生成材料</h3>
-                <button id="generateAllMaterialsButton" class="secondary-button min-h-[32px] px-3 text-xs" type="button">
-                  <i data-lucide="sparkles" class="h-3.5 w-3.5"></i>
-                  全部生成
-                </button>
-              </div>
-              <div class="grid gap-3 sm:grid-cols-2">
-                <button class="material-card rounded-[10px] border border-slate-200 bg-white/75 p-3 text-left transition hover:border-blue-200 hover:bg-blue-50/40" data-material="shortAnswer" type="button">
-                  <div class="mb-2 flex items-center justify-between gap-2 text-sm font-semibold text-slate-900">
-                    <span class="flex items-center gap-2">
-                      <i data-lucide="message-square-text" class="h-4 w-4 text-blue-600"></i>
-                      字段短答
-                    </span>
-                    <i data-lucide="maximize-2" class="h-3.5 w-3.5 text-slate-400"></i>
-                  </div>
-                  <p id="materialShortAnswer" class="whitespace-pre-line text-xs leading-5 text-slate-500">可入职时间、经历摘要、为什么申请该岗位。</p>
-                </button>
-                <button class="material-card rounded-[10px] border border-slate-200 bg-white/75 p-3 text-left transition hover:border-violet-200 hover:bg-violet-50/40" data-material="coverLetter" type="button">
-                  <div class="mb-2 flex items-center justify-between gap-2 text-sm font-semibold text-slate-900">
-                    <span class="flex items-center gap-2">
-                      <i data-lucide="mail" class="h-4 w-4 text-violet-600"></i>
-                      Cover Letter
-                    </span>
-                    <i data-lucide="maximize-2" class="h-3.5 w-3.5 text-slate-400"></i>
-                  </div>
-                  <p id="materialCoverLetter" class="whitespace-pre-line text-xs leading-5 text-slate-500">300 字中文版本，引用已勾选经历和关键成果。</p>
-                </button>
-                <button class="material-card rounded-[10px] border border-slate-200 bg-white/75 p-3 text-left transition hover:border-emerald-200 hover:bg-emerald-50/40" data-material="bq" type="button">
-                  <div class="mb-2 flex items-center justify-between gap-2 text-sm font-semibold text-slate-900">
-                    <span class="flex items-center gap-2">
-                      <i data-lucide="list-checks" class="h-4 w-4 text-emerald-600"></i>
-                      Behavior Question
-                    </span>
-                    <i data-lucide="maximize-2" class="h-3.5 w-3.5 text-slate-400"></i>
-                  </div>
-                  <p id="materialBQ" class="whitespace-pre-line text-xs leading-5 text-slate-500">团队合作、冲突解决、Why role。</p>
-                </button>
-                <button class="material-card rounded-[10px] border border-slate-200 bg-white/75 p-3 text-left transition hover:border-orange-200 hover:bg-orange-50/40" data-material="resumeAdvice" type="button">
-                  <div class="mb-2 flex items-center justify-between gap-2 text-sm font-semibold text-slate-900">
-                    <span class="flex items-center gap-2">
-                      <i data-lucide="file-symlink" class="h-4 w-4 text-orange-600"></i>
-                      适配简历建议
-                    </span>
-                    <i data-lucide="maximize-2" class="h-3.5 w-3.5 text-slate-400"></i>
-                  </div>
-                  <p id="materialResumeAdvice" class="whitespace-pre-line text-xs leading-5 text-slate-500">推荐保留与目标岗位最相关的经历，弱化无关内容。</p>
-                </button>
-              </div>
-            </div>
-            <div class="soft-panel rounded-[12px] p-4">
               <h3 class="mb-3 text-sm font-semibold text-slate-900">可调用内容选择</h3>
               <div class="space-y-3">
                 <label class="flex items-center gap-3 rounded-[9px] bg-white/75 p-3 text-sm font-semibold text-slate-800">
@@ -1113,6 +1055,70 @@
                   敏感字段需单独确认
                 </label>
               </div>
+            </div>
+          </div>
+          <div class="soft-panel mt-4 rounded-[12px] p-4">
+            <div class="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h3 class="text-sm font-semibold text-slate-900">生成材料</h3>
+                <p class="mt-1 text-xs leading-5 text-slate-500">解析后的材料独立横向展示，点击卡片可放大查看完整内容。</p>
+              </div>
+              <button id="generateAllMaterialsButton" class="secondary-button min-h-[32px] px-3 text-xs" type="button">
+                <i data-lucide="sparkles" class="h-3.5 w-3.5"></i>
+                全部生成
+              </button>
+            </div>
+            <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+              <button class="material-card h-full min-h-[154px] rounded-[10px] border border-slate-200 bg-white/75 p-3 text-left transition hover:border-blue-200 hover:bg-blue-50/40" data-material="shortAnswer" type="button">
+                <div class="mb-2 flex items-center justify-between gap-2 text-sm font-semibold text-slate-900">
+                  <span class="flex items-center gap-2">
+                    <i data-lucide="message-square-text" class="h-4 w-4 text-blue-600"></i>
+                    字段短答
+                  </span>
+                  <i data-lucide="maximize-2" class="h-3.5 w-3.5 text-slate-400"></i>
+                </div>
+                <p id="materialShortAnswer" class="max-h-[112px] overflow-hidden whitespace-pre-line text-xs leading-5 text-slate-500">可入职时间、经历摘要、为什么申请该岗位。</p>
+              </button>
+              <button class="material-card h-full min-h-[154px] rounded-[10px] border border-slate-200 bg-white/75 p-3 text-left transition hover:border-violet-200 hover:bg-violet-50/40" data-material="coverLetter" type="button">
+                <div class="mb-2 flex items-center justify-between gap-2 text-sm font-semibold text-slate-900">
+                  <span class="flex items-center gap-2">
+                    <i data-lucide="mail" class="h-4 w-4 text-violet-600"></i>
+                    Cover Letter
+                  </span>
+                  <i data-lucide="maximize-2" class="h-3.5 w-3.5 text-slate-400"></i>
+                </div>
+                <p id="materialCoverLetter" class="max-h-[112px] overflow-hidden whitespace-pre-line text-xs leading-5 text-slate-500">300 字中文版本，引用已勾选经历和关键成果。</p>
+              </button>
+              <div class="material-card h-full min-h-[154px] rounded-[10px] border border-slate-200 bg-white/75 p-3 text-left transition hover:border-emerald-200 hover:bg-emerald-50/40" data-material="bq">
+                <div class="mb-2 flex items-center justify-between gap-2 text-sm font-semibold text-slate-900">
+                  <span class="flex items-center gap-2">
+                    <i data-lucide="list-checks" class="h-4 w-4 text-emerald-600"></i>
+                    Behavior Question
+                  </span>
+                  <button id="previewBQButton" class="grid h-7 w-7 place-items-center rounded-[8px] border border-slate-200 bg-white text-slate-500 transition hover:border-emerald-200 hover:text-emerald-700" type="button" aria-label="预览 Behavior Question 回答">
+                    <i data-lucide="maximize-2" class="h-3.5 w-3.5"></i>
+                  </button>
+                </div>
+                <textarea id="bqQuestionInput" class="field-textarea min-h-[76px] text-xs leading-5" placeholder="输入面试官问题，例如：请讲一次你和团队合作解决问题的经历"></textarea>
+                <div class="mt-2 flex items-center justify-between gap-2">
+                  <button id="generateBQButton" class="primary-button min-h-[32px] px-3 text-xs" type="button">
+                    <i data-lucide="sparkles" class="h-3.5 w-3.5"></i>
+                    生成回答
+                  </button>
+                  <span id="bqQuestionStatus" class="text-xs font-semibold text-slate-400">待生成</span>
+                </div>
+                <p id="materialBQ" class="mt-3 max-h-[90px] overflow-hidden whitespace-pre-line rounded-[8px] bg-emerald-50/60 p-3 text-xs leading-5 text-slate-600">待生成回答。</p>
+              </div>
+              <button class="material-card h-full min-h-[154px] rounded-[10px] border border-slate-200 bg-white/75 p-3 text-left transition hover:border-orange-200 hover:bg-orange-50/40" data-material="resumeAdvice" type="button">
+                <div class="mb-2 flex items-center justify-between gap-2 text-sm font-semibold text-slate-900">
+                  <span class="flex items-center gap-2">
+                    <i data-lucide="file-symlink" class="h-4 w-4 text-orange-600"></i>
+                    适配简历建议
+                  </span>
+                  <i data-lucide="maximize-2" class="h-3.5 w-3.5 text-slate-400"></i>
+                </div>
+                <p id="materialResumeAdvice" class="max-h-[112px] overflow-hidden whitespace-pre-line text-xs leading-5 text-slate-500">推荐保留与目标岗位最相关的经历，弱化无关内容。</p>
+              </button>
             </div>
           </div>
         </section>
@@ -1579,6 +1585,7 @@
       const fit = fitResumeToPage();
       $("previewMeta").textContent = `${state.lang === "zh" ? "中文版本" : "English Version"} · 自动排版 ${fit.fontSize.toFixed(1)}px / ${fit.lineHeight.toFixed(2)}`;
       updateFitBadge();
+      renderMissingInfoSearch();
     }
 
     function fitResumeToPage() {
@@ -1668,6 +1675,194 @@
 
     function fieldValue(root, selector) {
       return root.querySelector(selector)?.value?.trim() || "";
+    }
+
+    function meaningfulFactText(value) {
+      const text = String(value || "").trim();
+      if (!text || /\[[^\]]+\]/.test(text) || /^xx$/i.test(text)) return "";
+      return text;
+    }
+
+    function itemFactText(item = {}) {
+      return [item.org, item.city, item.role, item.date, item.detail]
+        .map(meaningfulFactText)
+        .filter(Boolean)
+        .join(" ");
+    }
+
+    function hasQuantifiedEvidence(text) {
+      return /(?:\d+(?:\.\d+)?\s*(?:%|人|个|次|项|条|份|家|轮|天|周|月|小时|分钟|万|千|百|k|w|K|W)?|Top\s*\d+|第一|冠军|亚军|提升|增长|降低|节省|覆盖|转化|留存|点击率|完成率|准确率|规模|流水|GMV|ROI|DAU|MAU)/i.test(text);
+    }
+
+    function hasConflictEvidence(text) {
+      return /冲突|分歧|不同意见|协调|说服|推动|推进|跨部门|沟通|协作|压力|资源不足|优先级|延期|复盘|stakeholder|conflict|disagree|pressure/i.test(text);
+    }
+
+    function missingInfoIssue({ title, detail, evidence, action, target = "#resume", focus = "" }) {
+      return { title, detail, evidence, action, target, focus };
+    }
+
+    function scanMissingInfo() {
+      const profile = {
+        name: meaningfulFactText($("candidateName")?.value),
+        phone: meaningfulFactText($("candidatePhone")?.value),
+        email: meaningfulFactText($("candidateEmail")?.value)
+      };
+      const selectedExperience = collectItems("experience");
+      const selectedCampus = collectItems("campus");
+      const allExperience = collectAllItems("experience");
+      const allCampus = collectAllItems("campus");
+      const skills = collectSkillLines(false).map(meaningfulFactText).filter(Boolean);
+      const jd = state.currentJD || null;
+      const jdText = meaningfulFactText($("jdPasteText")?.value);
+      const bqQuestion = meaningfulFactText($("bqQuestionInput")?.value);
+      const bqRaw = meaningfulFactText(state.generatedMaterials.bq || $("materialBQ")?.textContent);
+      const bqAnswer = /待生成|生成中|未返回/i.test(bqRaw) ? "" : bqRaw;
+      const allItems = [...allExperience, ...allCampus];
+      const candidateText = [
+        profile.name, profile.phone, profile.email,
+        bqAnswer,
+        ...allItems.map(itemFactText),
+        ...skills
+      ].filter(Boolean).join(" ");
+      const contextText = [jdText, JSON.stringify(jd || {}), bqQuestion].filter(Boolean).join(" ");
+      const issues = [];
+
+      const missingProfile = [
+        !profile.name && "姓名",
+        !profile.phone && "手机号",
+        !profile.email && "邮箱"
+      ].filter(Boolean);
+      if (missingProfile.length) {
+        issues.push(missingInfoIssue({
+          title: "基础联系信息不完整",
+          detail: `缺少：${missingProfile.join("、")}`,
+          evidence: "招聘官网基础字段会直接使用这些信息。",
+          action: "补基础信息",
+          focus: "#candidateName"
+        }));
+      }
+
+      const incompleteExperience = selectedExperience.find((item) => {
+        const missing = ["org", "role", "date", "detail"].filter((key) => !meaningfulFactText(item[key]));
+        return missing.length;
+      });
+      if (incompleteExperience) {
+        const missing = [
+          !meaningfulFactText(incompleteExperience.org) && "公司/组织",
+          !meaningfulFactText(incompleteExperience.role) && "职位/角色",
+          !meaningfulFactText(incompleteExperience.date) && "起止时间",
+          !meaningfulFactText(incompleteExperience.detail) && "职责描述"
+        ].filter(Boolean);
+        issues.push(missingInfoIssue({
+          title: "已选经历字段缺口",
+          detail: missing.join("、"),
+          evidence: itemFactText(incompleteExperience) || "当前经历仍有空字段。",
+          action: "补经历",
+          focus: "#experienceList .resume-item input:not([type='checkbox']), #experienceList .resume-item textarea"
+        }));
+      }
+
+      const unquantified = [...selectedExperience, ...selectedCampus]
+        .filter((item) => itemFactText(item))
+        .filter((item) => !hasQuantifiedEvidence([item.role, item.detail].map(meaningfulFactText).filter(Boolean).join(" ")))
+        .slice(0, 2);
+      if (unquantified.length) {
+        issues.push(missingInfoIssue({
+          title: "经历缺少量化结果",
+          detail: `${unquantified.length} 段已选经历还没有可检索到的数字、规模或结果指标。`,
+          evidence: unquantified.map((item) => itemSummary(item) || item.detail.slice(0, 28)).filter(Boolean).join("；"),
+          action: "补量化成果",
+          focus: "#experienceList .item-detail, #campusList .item-detail"
+        }));
+      }
+
+      const needsConflictStory = /冲突|分歧|压力|困难|失败|挑战|合作|团队|conflict|pressure|challenge|team/i.test(contextText);
+      if ((needsConflictStory || !bqAnswer) && !hasConflictEvidence(candidateText)) {
+        issues.push(missingInfoIssue({
+          title: "开放题素材缺少冲突/压力证据",
+          detail: "资料库里未检索到分歧协调、压力处理或跨团队推进的具体场景。",
+          evidence: bqQuestion ? `当前问题：${bqQuestion.slice(0, 42)}` : "可补充一段真实 STAR 素材。",
+          action: "补 BQ 素材",
+          focus: "#campusList .item-detail, #experienceList .item-detail"
+        }));
+      }
+
+      const keywords = Array.isArray(jd?.keywords) ? jd.keywords : [];
+      const missingKeywords = keywords
+        .filter((keyword) => meaningfulFactText(keyword))
+        .filter((keyword) => !candidateText.toLowerCase().includes(String(keyword).toLowerCase()))
+        .slice(0, 3);
+      if (missingKeywords.length) {
+        issues.push(missingInfoIssue({
+          title: "JD 关键词未在资料库中命中",
+          detail: missingKeywords.join("、"),
+          evidence: `已检索 ${allItems.length} 段经历和 ${skills.length} 条技能。`,
+          action: "补关键词证据",
+          focus: "#skillsList .skill-input, #experienceList .item-detail"
+        }));
+      }
+
+      if ($("familyInfoToggle")?.checked) {
+        const familyRows = collectFamilyRows();
+        const incompleteFamily = familyRows.some((row) => !row.name || !row.relation || !row.position);
+        if (!familyRows.length || incompleteFamily) {
+          issues.push(missingInfoIssue({
+            title: "家庭信息已开启但不完整",
+            detail: "开启后请逐项填写姓名、关系和职位。",
+            evidence: "该信息属于敏感字段，默认不会进入批量填入。",
+            action: "补家庭信息",
+            focus: "#familyInfoRows .family-name"
+          }));
+        }
+      }
+
+      return {
+        issues: issues.slice(0, 6),
+        scannedCount: allItems.length + skills.length + (jd ? 1 : 0) + (bqQuestion ? 1 : 0)
+      };
+    }
+
+    function renderMissingInfoSearch() {
+      const list = $("missingInfoList");
+      const count = $("missingInfoCount");
+      if (!list || !count) return;
+      const { issues, scannedCount } = scanMissingInfo();
+      count.textContent = issues.length ? `${issues.length} 项 · 检索 ${scannedCount} 条` : `已完整 · 检索 ${scannedCount} 条`;
+      if (!issues.length) {
+        list.innerHTML = `
+          <div class="rounded-[10px] border border-emerald-200 bg-emerald-50/80 p-3 text-sm leading-6 text-emerald-800">
+            当前资料库未检索到关键缺口。可以继续用 JD 或具体 BQ 问题做更细筛查。
+          </div>
+        `;
+        return;
+      }
+      list.innerHTML = issues.map((issue) => `
+        <div class="rounded-[10px] border border-slate-200 bg-white/72 p-3">
+          <div class="flex items-start justify-between gap-3">
+            <div class="min-w-0">
+              <div class="text-sm font-semibold text-slate-900">${escapeHtml(issue.title)}</div>
+              <div class="mt-1 text-xs leading-5 text-slate-600">${escapeHtml(issue.detail)}</div>
+              <div class="mt-1 text-xs leading-5 text-slate-400">${escapeHtml(issue.evidence || "未命中可用事实。")}</div>
+            </div>
+            <button class="quiet-button shrink-0 text-xs" type="button" data-missing-target="${escapeHtml(issue.target)}" data-missing-focus="${escapeHtml(issue.focus || "")}">${escapeHtml(issue.action || "去补")}</button>
+          </div>
+        </div>
+      `).join("");
+    }
+
+    function bindMissingInfoSearch() {
+      $("missingInfoList")?.addEventListener("click", (event) => {
+        const button = event.target.closest("[data-missing-target]");
+        if (!button) return;
+        const target = document.querySelector(button.dataset.missingTarget || "#resume");
+        target?.scrollIntoView({ behavior: "smooth", block: "start" });
+        window.setTimeout(() => {
+          const focusSelector = button.dataset.missingFocus || "";
+          const focusTarget = focusSelector ? document.querySelector(focusSelector) : null;
+          focusTarget?.focus?.();
+        }, 350);
+      });
     }
 
     function renderStructuredItem(item) {
@@ -2507,19 +2702,25 @@
       const toggle = $("familyInfoToggle");
       const fields = $("familyInfoFields");
       const rows = $("familyInfoRows");
-      const update = () => fields?.classList.toggle("hidden", !toggle?.checked);
+      const update = () => {
+        fields?.classList.toggle("hidden", !toggle?.checked);
+        renderMissingInfoSearch();
+      };
       toggle?.addEventListener("change", update);
       $("addFamilyMemberButton")?.addEventListener("click", () => {
         const row = createFamilyRow();
         rows.appendChild(row);
         row.querySelector(".family-name").focus();
+        renderMissingInfoSearch();
         lucide.createIcons();
       });
       rows?.addEventListener("click", (event) => {
         const button = event.target.closest(".remove-family-row-button");
         if (!button) return;
         button.closest(".family-row")?.remove();
+        renderMissingInfoSearch();
       });
+      rows?.addEventListener("input", renderMissingInfoSearch);
       update();
     }
 
@@ -2736,6 +2937,7 @@ ${trimForAi(jdText, 9000)}
       $("jobKeywords").innerHTML = parsed.keywords
         .map((keyword) => `<span class="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">${escapeHtml(keyword)}</span>`)
         .join("");
+      renderMissingInfoSearch();
     }
 
     function materialTargetId(type) {
@@ -2764,6 +2966,7 @@ ${trimForAi(jdText, 9000)}
       const card = document.querySelector(`.material-card[data-material="${type}"]`);
       card?.classList.add("border-blue-300", "bg-blue-50/50");
       window.setTimeout(() => card?.classList.remove("border-blue-300", "bg-blue-50/50"), 900);
+      renderMissingInfoSearch();
     }
 
     function currentMaterialContent(type) {
@@ -2841,6 +3044,9 @@ ${trimForAi(jdText, 9000)}
       const typeInstruction = onlyType
         ? `只生成 ${materialTitle(onlyType)}，其他字段可以留空字符串。`
         : "同时生成四类材料。";
+      const bqInstruction = onlyType === "bq"
+        ? "Behavior Question 需要围绕用户输入的问题生成。"
+        : "Behavior Question 已由问题输入框单独生成；bq 字段请返回空字符串。";
       return `
 请根据候选人真实简历事实和 JD，生成求职材料。
 
@@ -2849,13 +3055,14 @@ ${trimForAi(jdText, 9000)}
 - 不能编造公司、岗位、项目、数据、奖项、学历、证书、技能或结果。
 - 如果候选人事实不足，要写成保守表达，或提示“需补充具体例子/数据”。
 - ${typeInstruction}
+- ${bqInstruction}
 - 输出 JSON，不要 Markdown。
 
 JSON 结构：
 {
   "shortAnswer": "常见申请表短答，包含可入职时间、经历摘要、为什么申请该岗位等，分行输出",
   "coverLetter": "约 250-350 字中文 cover letter",
-  "bq": "3 个 Behavior Question 回答，覆盖团队合作、冲突解决/压力处理、Why role，使用 STAR 结构",
+  "bq": "除非正在单独生成 Behavior Question，否则返回空字符串",
   "resumeAdvice": "3-5 条针对 JD 的简历取舍和 bullet 优化建议"
 }
 
@@ -2881,13 +3088,100 @@ ${JSON.stringify(resumeFactsForAi(), null, 2)}
       };
     }
 
+    function currentBQQuestion() {
+      return $("bqQuestionInput")?.value.trim() || "";
+    }
+
+    function setBQQuestionStatus(message, tone = "slate") {
+      const status = $("bqQuestionStatus");
+      if (!status) return;
+      const tones = {
+        slate: "text-xs font-semibold text-slate-400",
+        green: "text-xs font-semibold text-emerald-700",
+        orange: "text-xs font-semibold text-orange-700",
+        red: "text-xs font-semibold text-red-700",
+        blue: "text-xs font-semibold text-blue-700"
+      };
+      status.className = tones[tone] || tones.slate;
+      status.textContent = message;
+    }
+
+    function behaviorQuestionPrompt(parsed, question) {
+      return `
+请根据候选人真实资料库和 JD，回答这道 Behavior Question。
+
+问题：
+${question}
+
+硬性规则：
+- 只能引用“候选人事实”和“JD”中已有的信息，不能编造公司、岗位、项目、数据、奖项、学校、证书、技能或结果。
+- 如果资料库没有足够事实，请给出保守回答，并在末尾用一句“可补充信息”说明缺少什么。
+- 优先使用 STAR 结构：Situation / Task / Action / Result；如果问题不适合 STAR，可用清晰段落回答。
+- 回答应适合作为面试口述稿，中文为主；如果问题是英文，则输出自然英文。
+- 输出 JSON，不要 Markdown。
+
+JSON 结构：
+{
+  "bq": "针对该问题的一段完整回答"
+}
+
+JD：
+${JSON.stringify(parsed, null, 2)}
+
+候选人事实：
+${JSON.stringify(resumeFactsForAi(), null, 2)}
+`;
+    }
+
+    async function generateBehaviorQuestionAnswer(parsed = getCurrentJDContext(), options = {}) {
+      const question = currentBQQuestion();
+      if (!question) {
+        setBQQuestionStatus("请先输入一道具体问题。", "orange");
+        $("bqQuestionInput")?.focus();
+        return;
+      }
+      const button = $("generateBQButton");
+      const original = button?.innerHTML || "";
+      if (button) {
+        button.disabled = true;
+        button.innerHTML = '<i data-lucide="loader-circle" class="h-3.5 w-3.5 animate-spin"></i> 生成中';
+      }
+      lucide.createIcons();
+      setBQQuestionStatus("AI 正在结合资料库和 JD 生成回答。", "blue");
+      setMaterialLoading("bq");
+      try {
+        const result = await callDeepSeek("Behavior Question 回答生成", behaviorQuestionPrompt(parsed, question), {
+          json: true,
+          temperature: 0.35,
+          maxTokens: 1800
+        });
+        const content = aiText(result.bq) || "AI 未返回可用回答，请补充问题或候选人事实后重试。";
+        renderMaterial("bq", content);
+        setBQQuestionStatus("已生成回答，可点击右上角放大查看。", "green");
+        if (options.openPreview) openMaterialPreview("bq", content);
+        if (options.updatePreview) updateMaterialPreview("bq", content);
+      } catch (error) {
+        renderMaterial("bq", error.message);
+        setBQQuestionStatus(error.message, "red");
+        if (options.openPreview) openMaterialPreview("bq", error.message);
+        if (options.updatePreview) updateMaterialPreview("bq", error.message);
+      } finally {
+        if (button) {
+          button.disabled = false;
+          button.innerHTML = original;
+        }
+        lucide.createIcons();
+      }
+    }
+
     function setMaterialLoading(type) {
       const targetId = materialTargetId(type);
       if (targetId) $(targetId).textContent = `${materialTitle(type)}生成中...`;
     }
 
     function setAllMaterialsLoading() {
-      ["shortAnswer", "coverLetter", "bq", "resumeAdvice"].forEach(setMaterialLoading);
+      ["shortAnswer", "coverLetter", "resumeAdvice"].forEach(setMaterialLoading);
+      if (currentBQQuestion()) setMaterialLoading("bq");
     }
 
     function bindJDUnderstanding() {
@@ -2917,9 +3211,15 @@ ${JSON.stringify(resumeFactsForAi(), null, 2)}
         }
       });
       document.querySelectorAll(".material-card").forEach((card) => {
+        if (card.dataset.material === "bq") return;
         card.addEventListener("click", () => openOrGenerateMaterial(card.dataset.material));
       });
       $("generateAllMaterialsButton")?.addEventListener("click", () => generateAllMaterials());
+      $("generateBQButton")?.addEventListener("click", () => generateBehaviorQuestionAnswer());
+      $("previewBQButton")?.addEventListener("click", () => openMaterialPreview("bq"));
+      $("bqQuestionInput")?.addEventListener("keydown", (event) => {
+        if ((event.metaKey || event.ctrlKey) && event.key === "Enter") generateBehaviorQuestionAnswer();
+      });
     }
 
     function bindMaterialPreview() {
@@ -3003,15 +3303,19 @@ ${JSON.stringify(resumeFactsForAi(), null, 2)}
 
     async function generateAllMaterials(parsed) {
       const button = $("generateAllMaterialsButton");
+      const shouldGenerateBQ = Boolean(currentBQQuestion());
       if (button) button.disabled = true;
       setAllMaterialsLoading();
       try {
         const materials = await generateMaterialsWithAI(parsed || getCurrentJDContext());
         Object.entries(materials).forEach(([type, content]) => {
+          if (type === "bq") return;
           renderMaterial(type, content || "AI 未返回可用内容，请补充 JD 或候选人事实后重试。");
         });
+        if (shouldGenerateBQ) await generateBehaviorQuestionAnswer(parsed || getCurrentJDContext());
       } catch (error) {
-        ["shortAnswer", "coverLetter", "bq", "resumeAdvice"].forEach((type) => renderMaterial(type, error.message));
+        ["shortAnswer", "coverLetter", "resumeAdvice"].forEach((type) => renderMaterial(type, error.message));
+        if (shouldGenerateBQ) renderMaterial("bq", error.message);
       } finally {
         if (button) button.disabled = false;
         lucide.createIcons();
@@ -3755,6 +4059,7 @@ ${JSON.stringify(details, null, 2)}
       bindRemoveItems();
       bindSkillRows();
       bindFamilyInfo();
+      bindMissingInfoSearch();
       bindApplicationTracker();
       bindAiSettings();
       bindSmartPaste();
